@@ -1,15 +1,83 @@
 # capstone-NewsNow
 
 # 📰 NewsNow (뉴스나우)
+> **AI를 통한 정보 격차 해소: 전 연령층을 위한 맞춤형 뉴스 리팩토링 서비스**
 
-"글자는 읽지만 뜻은 모르는" 이른바 **'실질적 문해력 저하'**가 우리 세대의 심각한 문제로 떠오르고 있습니다. 실제로 학교 현장에서는 '풍력'이나 '성명' 같은 기초 어휘를 몰라 수업을 포기하는 학생들이 늘고 있고, 성인들 사이에서도 '심심한 사과' 같은 표현이 오해를 불러일으키며 소모적인 논쟁이 벌어지기도 합니다. 
-
-우리는 이 문제가 단순히 개인의 공부 부족이 아니라, 뉴스의 높은 언어 장벽 때문이라고 판단했습니다. 쏟아지는 정보 속에서 나에게 맞는 난이도의 글을 찾기란 쉽지 않습니다. 그래서 우리는 AI를 활용해 사용자의 어휘 수준에 맞춰 뉴스를 실시간으로 리팩토링하는 서비스를 기획했습니다.
+<p align="center">
+  <img src="https://img.shields.io/badge/Main_Language-Java-orange?style=flat-square&logo=Java"/>
+  <img src="https://img.shields.io/badge/Framework-Spring_Boot-6DB33F?style=flat-square&logo=Spring-Boot"/>
+  <img src="https://img.shields.io/badge/AI_Engine-Gemini_1.5_Flash-4285F4?style=flat-square&logo=Google-Gemini"/>
+  <img src="https://img.shields.io/badge/Build-Gradle-02303A?style=flat-square&logo=Gradle"/>
+  <br>
+  <img src="https://img.shields.io/github/issues/geunpyoPark/capstone-NewsNow?style=flat-square"/>
+  <img src="https://img.shields.io/github/stars/geunpyoPark/capstone-NewsNow?style=flat-square"/>
+  <img src="https://img.shields.io/github/license/geunpyoPark/capstone-NewsNow?style=flat-square"/>
+</p>
 
 ---
 
-### ⚒ 주요 기능 ⚒
+## 📌 1. 프로젝트 개요 (Project Overview)
 
-* **단계적 텍스트 적응(Level 1~4)**: LLM을 통해 문장 구조와 어휘 난이도를 4단계로 재구성하여, 누구나 자신의 수준에서 정보를 완벽히 소화할 수 있게 돕습니다.
-* **맥락 기반 툴팁 & 퀴즈**: 모르는 단어를 즉시 확인하는 것에 그치지 않고, 짧은 퀴즈를 통해 해당 어휘를 완전히 내 것으로 만들었는지 검증합니다.
-* **데이터 기반 레벨 가이드**: 사용자의 퀴즈 정답률과 읽기 패턴을 분석해 최적의 학습 경로를 제안합니다.
+"글자는 읽지만 뜻은 모르는" 이른바 **'실질적 문해력 저하'** 문제를 공학적으로 해결하고자 합니다. 
+
+* **문제 정의**: 어려운 한자어와 전문 용어로 가득한 뉴스가 정보 격차를 심화시킵니다.
+* **해결 방안**: AI(LLM)를 활용해 사용자의 어휘 수준에 맞춰 뉴스를 **실시간으로 리팩토링(Level 1~4)** 하여 제공합니다.
+
+---
+
+## ✨ 2. 핵심 기능 (Key Features)
+
+| 기능 | 설명 | 담당 |
+| :--- | :--- | :--- |
+| **Adaptive News** | 뉴스 원문을 4단계 난이도로 실시간 재해석 | **박근표** |
+| **Smart Tooltip** | 어려운 단어 클릭 시 맥락 기반 의미 제공 | **김해수** |
+| **Literacy Quiz** | 뉴스 읽기 후 이해도 확인 및 정답률 분석 | **김유나** |
+| **Word Scrap** | 나만의 시사 용어 사전 및 학습 리포트 | **공통** |
+
+---
+
+## 🛠 3. 기술 스택 (Tech Stack)
+
+### **Frontend**
+<img src="https://img.shields.io/badge/React_Native-61DAFB?style=for-the-badge&logo=React&logoColor=black"> <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=TypeScript&logoColor=white">
+
+### **Backend & AI**
+<img src="https://img.shields.io/badge/Spring_Boot-6DB33F?style=for-the-badge&logo=SpringBoot&logoColor=white"> <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=Python&logoColor=white"> <img src="https://img.shields.io/badge/Google_Gemini-4285F4?style=for-the-badge&logo=GoogleGemini&logoColor=white">
+
+### **Database & Infra**
+<img src="https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=MySQL&logoColor=white"> <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=Docker&logoColor=white">
+
+---
+
+## 👥 4. 팀원 소개 (Team Members)
+
+<table align="center">
+  <tr>
+    <td align="center">
+      <a href="https://github.com/geunpyoPark">
+        <img src="https://github.com/geunpyoPark.png" width="100px;" alt="박근표"/><br />
+        <sub><b>박근표 (팀장)</b></sub>
+      </a><br />
+      AI & Data Engine
+    </td>
+    <td align="center">
+      <a href="https://github.com/해수아이디">
+        <img src="https://github.com/해수아이디.png" width="100px;" alt="김해수"/><br />
+        <sub><b>김해수</b></sub>
+      </a><br />
+      FE & BE Dev
+    </td>
+    <td align="center">
+      <a href="https://github.com/유나아이디">
+        <img src="https://github.com/유나아이디.png" width="100px;" alt="김유나"/><br />
+        <sub><b>김유나</b></sub>
+      </a><br />
+      BE & Analysis
+    </td>
+  </tr>
+</table>
+
+---
+
+## 📄 5. 라이선스 (License)
+This project is licensed under the MIT License.
