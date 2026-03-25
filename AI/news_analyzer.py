@@ -93,4 +93,4 @@ if __name__ == "__main__":
     
     if result_json:
         print("\n✅ AI 분석 및 JSON 생성 완료!\n")
-        print(json.dumps(result_json, indent=4, ensure_ascii=False))
+        print(json.dumps(result_json, indent=4, ensure_ascii=False)) 
