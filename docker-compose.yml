@@ -1,0 +1,26 @@
+
+services:
+  # 1. 데이터베이스: PostgreSQL
+  db:
+    image: postgres:15
+    container_name: newsnow_db
+    restart: always
+    environment:
+      POSTGRES_USER: newsuser
+      POSTGRES_PASSWORD: newspassword
+      POSTGRES_DB: newsnow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # 2. 캐시 서버: Redis (뉴스 데이터 임시 저장용)
+  redis:
+    image: redis:alpine
+    container_name: newsnow_redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:
+  
