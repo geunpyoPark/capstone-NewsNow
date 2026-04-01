@@ -32,3 +32,12 @@ AI/__pycache__/
 # 공통 보안
 .env
 *.log
+
+# [Python / FastAPI]
+__pycache__/
+*.pyc
+venv/
+.venv/
+.env
+*.log
+.vscode/
