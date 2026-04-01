@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
@@ -11,13 +10,6 @@ import {
 } from 'react-native';
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-
-  const handleLogin = () => {
-    console.log('일반 로그인');
-  };
-
   const handleKakaoLogin = () => {
     console.log('카카오 로그인');
   };
@@ -28,62 +20,27 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F5F9FF" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       <View style={styles.container}>
+        {/* 위쪽 (로고 + 텍스트) */}
         <View style={styles.topArea}>
-          <Text style={styles.title}>로그인</Text>
+          <Image
+            source={require('../assets/images/logo.jpg')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
 
-          <View style={styles.illustrationCircle}>
-            <View style={styles.cityWrap}>
-              <View style={[styles.building, styles.b1]} />
-              <View style={[styles.building, styles.b2]} />
-              <View style={[styles.building, styles.b3]} />
-              <View style={[styles.building, styles.b4]} />
-              <View style={[styles.building, styles.b5]} />
-            </View>
-          </View>
-
-          <Text style={styles.welcomeText}>뉴스나우에 오신 것을 환영합니다.</Text>
+          <Text style={styles.welcomeText}>
+  같은 뉴스,{'\n'}내 수준에 맞는 문장으로!
+</Text>
         </View>
 
-        <View style={styles.formArea}>
-          <View style={styles.inputBox}>
-            <Text style={styles.inputIcon}>✉️</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="이메일 주소"
-              placeholderTextColor="#9AA4B2"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-
-          <View style={styles.inputBox}>
-            <Text style={styles.inputIcon}>🔒</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="비밀번호"
-              placeholderTextColor="#9AA4B2"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-          </View>
-
-          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-            <Text style={styles.loginButtonText}>로그인</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity>
-            <Text style={styles.subText}>비밀번호를 잊으셨나요?</Text>
-          </TouchableOpacity>
-
+        {/* 아래 (간편 로그인) */}
+        <View style={styles.bottomArea}>
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>간편 로그인</Text>
+            <Text style={styles.dividerText}>간편 로그인 및 회원가입</Text>
             <View style={styles.dividerLine} />
           </View>
 
@@ -104,13 +61,6 @@ export default function LoginScreen() {
               />
             </TouchableOpacity>
           </View>
-
-          <View style={styles.signupRow}>
-            <Text style={styles.signupText}>계정이 없으신가요? </Text>
-            <TouchableOpacity>
-              <Text style={styles.signupLink}>회원가입</Text>
-            </TouchableOpacity>
-          </View>
         </View>
       </View>
     </SafeAreaView>
@@ -120,164 +70,81 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F9FF',
+    backgroundColor: '#FFFFFF',
   },
+
   container: {
     flex: 1,
-    backgroundColor: '#F5F9FF',
-    paddingHorizontal: 24,
-    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
   },
+
+  /* 위쪽 */
   topArea: {
+    flex: 3,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 28,
   },
-  title: {
-    fontSize: 34,
-    fontWeight: '800',
-    color: '#1E2430',
-    marginBottom: 28,
+
+  logoImage: {
+    width: 200,   // ← 동그라미 크기랑 동일
+    height: 200,
+    marginBottom: 40,
   },
-  illustrationCircle: {
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: '#EAF2FD',
+
+  welcomeText: {
+    fontSize: 20,
+    color: '#829BE9',
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+
+  /* 아래 */
+  bottomArea: {
+    flex: 1,
     justifyContent: 'flex-end',
     alignItems: 'center',
-    overflow: 'hidden',
-    marginBottom: 20,
+    paddingBottom: 60,
   },
-  cityWrap: {
-    width: '100%',
-    height: 100,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    gap: 8,
-    paddingBottom: 18,
-  },
-  building: {
-    backgroundColor: '#C8D8EE',
-    borderRadius: 6,
-  },
-  b1: {
-    width: 26,
-    height: 46,
-  },
-  b2: {
-    width: 34,
-    height: 66,
-  },
-  b3: {
-    width: 42,
-    height: 82,
-  },
-  b4: {
-    width: 34,
-    height: 58,
-  },
-  b5: {
-    width: 24,
-    height: 40,
-  },
-  welcomeText: {
-    fontSize: 18,
-    color: '#4A5565',
-    textAlign: 'center',
-    lineHeight: 26,
-  },
-  formArea: {
-    width: '100%',
-  },
-  inputBox: {
-    height: 60,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#DCE6F2',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 14,
-  },
-  inputIcon: {
-    fontSize: 18,
-    marginRight: 10,
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: '#1E2430',
-  },
-  loginButton: {
-    height: 58,
-    borderRadius: 14,
-    backgroundColor: '#4D7DF3',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 18,
-  },
-  loginButtonText: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  subText: {
-    textAlign: 'center',
-    fontSize: 15,
-    color: '#7D8794',
-    marginBottom: 22,
-  },
+
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 20,
+    width: '80%',
   },
+
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E1E8F0',
+    backgroundColor: '#E5E5E5',
   },
+
   dividerText: {
     marginHorizontal: 12,
     fontSize: 14,
-    color: '#7D8794',
+    color: '#888888',
   },
+
   socialRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 18,
-    marginBottom: 24,
+    gap: 20,
   },
+
   socialCircle: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#D9E1EA',
+    borderColor: '#E5E5E5',
     justifyContent: 'center',
     alignItems: 'center',
   },
+
   socialIcon: {
-    width: 30,
-    height: 30,
-  },
-  signupRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  signupText: {
-    fontSize: 16,
-    color: '#6B7684',
-  },
-  signupLink: {
-    fontSize: 16,
-    color: '#4D7DF3',
-    fontWeight: '700',
+    width: 36,
+    height: 36,
   },
 });
