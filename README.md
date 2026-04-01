@@ -39,13 +39,26 @@
 ## 🛠 3. 기술 스택 (Tech Stack)
 
 ### **Frontend**
-<img src="https://img.shields.io/badge/React_Native-61DAFB?style=for-the-badge&logo=React&logoColor=black"> <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=TypeScript&logoColor=white">
+<img src="https://img.shields.io/badge/React_Native-61DAFB?style=for-the-badge&logo=React&logoColor=black"> <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=TypeScript&logoColor=white"> <img src="https://img.shields.io/badge/React_Navigation-E5122E?style=for-the-badge&logo=React-Navigation&logoColor=white">
+* **상태 관리 및 UI**: React Native 기반의 크로스 플랫폼 앱 구현
+* **인증 서비스**: Google & Kakao OAuth 2.0 소셜 로그인 연동
 
-### **Backend & AI**
-<img src="https://img.shields.io/badge/Spring_Boot-6DB33F?style=for-the-badge&logo=SpringBoot&logoColor=white"> <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=Python&logoColor=white"> <img src="https://img.shields.io/badge/Google_Gemini-4285F4?style=for-the-badge&logo=GoogleGemini&logoColor=white">
+### **Backend (Main & Auth)**
+<img src="https://img.shields.io/badge/Spring_Boot-6DB33F?style=for-the-badge&logo=SpringBoot&logoColor=white"> <img src="https://img.shields.io/badge/Java_17-ED8B00?style=for-the-badge&logo=Java&logoColor=white"> <img src="https://img.shields.io/badge/Spring_Security-6DB33F?style=for-the-badge&logo=SpringSecurity&logoColor=white">
+* **메인 서버**: Spring Boot 기반의 비즈니스 로직 및 사용자 데이터 관리
+* **보안**: Spring Security를 활용한 세션 및 권한 제어
 
-### **Database & Infra**
-<img src="https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=MySQL&logoColor=white"> <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=Docker&logoColor=white">
+### **AI & Data Engineering (Core)**
+<img src="https://img.shields.io/badge/Python_3.11-3776AB?style=for-the-badge&logo=Python&logoColor=white"> <img src="https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi&logoColor=white"> <img src="https://img.shields.io/badge/Google_Gemini-4285F4?style=for-the-badge&logo=GoogleGemini&logoColor=white"> <img src="https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=PyTorch&logoColor=white">
+* **AI API Server**: **FastAPI**를 활용한 비동기 데이터 분석 및 서빙 엔진 구축
+* **LLM**: Gemini 2.5 Flash 기반 뉴스 4단계 재구성 및 지능형 퀴즈 생성 로직
+* **Image Gen**: `diffusers` 라이브러리를 활용한 뉴스 기반 입문자용 네컷 만화 생성 (R&D)
+* **Crawling**: BeautifulSoup4를 활용한 네이버 뉴스 정밀 크롤링 파이프라인
+
+### **Database & Infrastructure**
+<img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=PostgreSQL&logoColor=white"> <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=Docker&logoColor=white"> <img src="https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=GitHubActions&logoColor=white">
+* **Storage**: **JSONB** 데이터 타입을 활용한 비정형 AI 분석 결과 최적화 적재
+* **DevOps**: Docker Compose를 통한 서비스 컨테이너화 및 개발 환경 표준화
 
 ---
 
