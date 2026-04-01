@@ -49,7 +49,7 @@
 * **보안**: Spring Security를 활용한 세션 및 권한 제어
 
 ### **AI & Data Engineering (Core)**
-<img src="https://img.shields.io/badge/Python_3.11-3776AB?style=for-the-badge&logo=Python&logoColor=white"> <img src="https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi&logoColor=white"> <img src="https://img.shields.io/badge/Google_Gemini-4285F4?style=for-the-badge&logo=GoogleGemini&logoColor=white"> <img src="https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=PyTorch&logoColor=white">
+<img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=Python&logoColor=white"> <img src="https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi&logoColor=white"> <img src="https://img.shields.io/badge/Google_Gemini-4285F4?style=for-the-badge&logo=GoogleGemini&logoColor=white"> <img src="https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=PyTorch&logoColor=white">
 * **AI API Server**: **FastAPI**를 활용한 비동기 데이터 분석 및 서빙 엔진 구축
 * **LLM**: Gemini 2.5 Flash 기반 뉴스 4단계 재구성 및 지능형 퀴즈 생성 로직
 * **Image Gen**: `diffusers` 라이브러리를 활용한 뉴스 기반 입문자용 네컷 만화 생성 (R&D)
