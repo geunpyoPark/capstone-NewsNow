@@ -1,11 +1,24 @@
 import os
 import json
+import time
+import logging
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from tenacity import retry, wait_random_exponential, stop_after_attempt, retry_if_exception
+
+# 로깅 설정 (시스템 로그 최소화)
+logging.basicConfig(level=logging.WARNING)
+logger = logging.getLogger(__name__)
 
 # .env 파일 로드
 load_dotenv()
+
+def is_retryable_error(exception):
+    """429(할당량 초과) 및 503(서버 과부하) 에러인 경우에 재시도합니다."""
+    error_msg = str(exception).lower()
+    retryable_keywords = ["429", "resource_exhausted", "quota", "503", "unavailable", "high demand"]
+    return any(keyword in error_msg for keyword in retryable_keywords)
 
 class NewsAnalyzer:
     def __init__(self):
@@ -13,16 +26,22 @@ class NewsAnalyzer:
         if not api_key:
             raise ValueError("GEMINI_API_KEY가 .env 파일에 없습니다! 확인해주세요.")
         
-        # [신형 SDK 적용] Client 객체 생성
         self.client = genai.Client(api_key=api_key)
         
-        # 최신 2.5 Flash 모델 사용
-        self.model_name = 'gemini-2.5-flash'
+        # 이전 실행 시 '200 OK'를 받았던 가장 안정적인 모델명으로 복구
+        self.model_name = 'gemini-flash-latest'
 
+    @retry(
+        retry=retry_if_exception(is_retryable_error),
+        # 지수 백오프에 랜덤성을 추가하여 서버 몰림 방지 (최대 120초까지 대기)
+        wait=wait_random_exponential(multiplier=1, max=120), 
+        stop=stop_after_attempt(5), 
+        reraise=True, # 최종 실패 시 RetryError 대신 실제 예외를 던짐
+        before_sleep=lambda retry_state: print(f"⏳ [API 할당량 초과] {retry_state.next_action.sleep:.1f}초 후 재시도합니다... (시도 {retry_state.attempt_number}/5)")
+    )
     def analyze_and_reconstruct(self, news_text):
         """
         뉴스 본문을 받아 4단계 난이도로 재구성, 퀴즈 생성 및 핵심 단어 하이라이트를 추출합니다.
-        (V5.5: 상위 레벨 순화, 4지선다 고정, 사실 강도 통일 + 하이라이트 보조 반영)
         """
         prompt = f"""
         너는 독해 교육 서비스 'NewsNow'의 시니어 에디터야. 
@@ -65,7 +84,6 @@ class NewsAnalyzer:
         """
 
         try:
-            print(f"🧠 {self.model_name} V5.5 최종 밸런스 패치 + 하이라이트 추출 중...")
             response = self.client.models.generate_content(
                 model=self.model_name,
                 contents=prompt,
@@ -76,7 +94,9 @@ class NewsAnalyzer:
             return json.loads(response.text)
             
         except Exception as e:
-            print(f"AI 분석 중 에러 발생: {e}")
+            if is_retryable_error(e):
+                raise e # retry가 잡을 수 있게 다시 던짐
+            print(f"AI 분석 중 치명적 에러 발생: {e}")
             return None
 
 # ==========================================
@@ -84,13 +104,8 @@ class NewsAnalyzer:
 # ==========================================
 if __name__ == "__main__":
     analyzer = NewsAnalyzer()
-    
-    sample_text = """
-    장창민 산업부장 “원자재값이 폭등하고 환율과 금리까지 뛰어 경영 여건은 ‘시계 제로’인 상황입니다. 여기에다 미국·이란 전쟁과 미국의 관세 폭탄, 미·중 갈등 등 툭하면 터져 나오는 대외 변수는 이제 상수가 된 느낌이에요. 작년 말 세워놓은 올해 사업 계획은 일찌감치 책상 서랍에 넣어놨습니다.” 얼마 전 만난 대기업 최고경영자(CEO)는 이렇게 토로했다. 고물가·고금리·고환율 등 이른바 ‘3고(高)’는 ‘뉴노멀’이 됐고 생각하지도 못한 지정학적 변수가 잇따르면서 공들여 짜놓은 사업 계획이 쓸모없어졌다는 것이다.
-    """
-    
-    result_json = analyzer.analyze_and_reconstruct(sample_text)
-    
-    if result_json:
-        print("\n✅ AI 분석 및 JSON 생성 완료!\n")
-        print(json.dumps(result_json, indent=4, ensure_ascii=False)) 
+    sample_text = "테스트용 뉴스 본문입니다. 환율이 오르고 금리가 상승하고 있습니다."
+    result = analyzer.analyze_and_reconstruct(sample_text)
+    if result:
+        print("✅ 성공")
+        print(json.dumps(result, indent=4, ensure_ascii=False))

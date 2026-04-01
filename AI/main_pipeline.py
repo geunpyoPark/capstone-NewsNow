@@ -5,7 +5,7 @@ import psycopg2
 from psycopg2.extras import Json
 from dotenv import load_dotenv
 from news_crawler import NaverNewsCrawler
-from news_analyzer import NewsAnalyzer
+from news_analyzer import NewsAnalyzer, is_retryable_error
 
 # .env 로드
 load_dotenv()
@@ -20,22 +20,20 @@ def validate_analysis(result):
 def save_to_db(conn, cursor, final_results):
     """전달받은 커넥션과 커서를 사용하여 데이터를 기사 단위로 저장합니다."""
     if not final_results:
-        print("⚠️ [DB] 저장할 데이터가 없습니다.")
         return
 
     for news in final_results:
         try:
-            # 1. news_articles (메타데이터) 저장 및 ID 반환
+            # 1. news_articles (메타데이터 + 카테고리) 저장 및 ID 반환
             cursor.execute("""
-                INSERT INTO news_articles (title, url, pub_date)
-                VALUES (%s, %s, %s)
+                INSERT INTO news_articles (title, url, pub_date, category)
+                VALUES (%s, %s, %s, %s)
                 ON CONFLICT (url) DO NOTHING
                 RETURNING id;
-            """, (news['meta']['title'], news['meta']['url'], news['meta']['pub_date']))
+            """, (news['meta']['title'], news['meta']['url'], news['meta']['pub_date'], news['meta'].get('category', '일반')))
             
             result = cursor.fetchone()
             if not result:
-                print(f"⏩ [DB] 이미 존재하는 기사 (건너뜀): {news['meta']['title'][:20]}...")
                 continue 
             article_id = result[0]
 
@@ -52,11 +50,95 @@ def save_to_db(conn, cursor, final_results):
             """, (article_id, Json(news['quizzes']), Json(news['highlights'])))
 
             conn.commit() # 기사 한 건 성공 시 즉시 커밋
-            print(f"✨ [DB] 저장 성공: {news['meta']['title'][:20]}...")
+            print(f"✨ [DB] 저장 완료: {news['meta']['title'][:20]}...")
 
         except Exception as e:
-            conn.rollback() # 에러 발생 시 해당 기사 작업만 롤백하고 트랜잭션 상태 초기화
+            conn.rollback()
             print(f"❌ [DB] 개별 기사 저장 중 오류: {e}")
+
+def run_news_now_pipeline(keyword="반도체", count=5, category="일반"):
+    crawler = NaverNewsCrawler()
+    analyzer = NewsAnalyzer()
+    
+    print(f"🚀 [NewsNow] '{keyword}' 목표 {count}건 수집 시작!")
+    
+    # DB 연결 설정
+    conn_params = {
+        "host": os.getenv("DB_HOST"),
+        "database": os.getenv("DB_NAME"),
+        "user": os.getenv("DB_USER"),
+        "password": os.getenv("DB_PASSWORD"),
+        "port": os.getenv("DB_PORT")
+    }
+
+    final_results_count = 0
+    start_index = 1
+    max_search = 100 # 안전장치: 최대 100번 기사까지만 탐색
+
+    try:
+        with psycopg2.connect(**conn_params) as conn:
+            with conn.cursor() as cur:
+                while final_results_count < count and start_index <= max_search:
+                    print(f"🔍 검색 결과 {start_index}번부터 탐색 중... (현재 {final_results_count}/{count} 수집)")
+                    news_list = crawler.get_news(query=keyword, display=10, start=start_index)
+                    
+                    if not news_list:
+                        print("⚠️ 더 이상 검색 결과가 없습니다.")
+                        break
+
+                    for news in news_list:
+                        if final_results_count >= count:
+                            break
+                        
+                        # [1. 중복 체크]
+                        if is_article_exists(cur, news['naver_link']):
+                            print(f"⏩ 중복 기사 패스: {news['title'][:15]}...")
+                            continue
+
+                        # [2. 본문 추출 및 최적화]
+                        body_text = crawler.extract_body(news['naver_link'])
+                        if not body_text or len(body_text) < 200:
+                            print(f"⚠️ 본문 부족 패스 ({len(body_text) if body_text else 0}자)")
+                            continue
+                        
+                        # 💡 토큰 절약을 위해 본문 길이를 2500자로 제한
+                        body_text = body_text[:2500]
+                            
+                        # [3. AI 분석]
+                        print(f"🧠 AI 분석 중: {news['title'][:20]}...")
+                        try:
+                            analysis_result = analyzer.analyze_and_reconstruct(body_text)
+                            
+                            if analysis_result and validate_analysis(analysis_result):
+                                analysis_result['meta'] = {
+                                    "title": news['title'],
+                                    "url": news['naver_link'],
+                                    "pub_date": news['pub_date'],
+                                    "category": category
+                                }
+                                # 분석 성공 시 즉시 DB 저장
+                                save_to_db(conn, cur, [analysis_result])
+                                final_results_count += 1
+                                print(f"✅ {final_results_count}/{count} 기사 수집 성공!")
+                            else:
+                                print("❌ AI 응답 품질 미달 패스")
+                        except Exception as e:
+                            print(f"⚠️ 분석 실패 (건너뜀): {e}")
+                            if is_retryable_error(e):
+                                # 할당량 초과 에러가 재시도 끝에 실패했다면, 전체 흐름을 위해 길게 쉽니다.
+                                print("🛑 API 제한 상태가 지속되어 60초간 쿨다운을 가집니다...")
+                                time.sleep(60)
+                            continue 
+
+                        # API 할당량 보호: 평상시에도 15초간 대기
+                        print(f"💤 다음 작업을 위해 15초간 대기합니다...")
+                        time.sleep(15) 
+
+                    # 다음 페이지로 이동
+                    start_index += 10
+
+    except Exception as e:
+        print(f"❌ [Pipeline] 치명적 오류 발생: {e}")
 
 def is_article_exists(cursor, url):
     """전달받은 커서를 사용하여 URL 중복 여부를 확인합니다."""
@@ -67,66 +149,27 @@ def is_article_exists(cursor, url):
         print(f"⚠️ [DB] 중복 확인 중 오류: {e}")
         return False
 
-def run_news_now_pipeline(keyword="반도체", count=3):
-    crawler = NaverNewsCrawler()
-    analyzer = NewsAnalyzer()
-    
-    print(f"🚀 [NewsNow] '{keyword}' 파이프라인 가동 (목표: {count}건)")
-    
-    news_list = crawler.get_news(query=keyword, display=count)
-    if not news_list: return
-
-    # DB 연결 정보 설정
-    conn_params = {
-        "host": os.getenv("DB_HOST"),
-        "database": os.getenv("DB_NAME"),
-        "user": os.getenv("DB_USER"),
-        "password": os.getenv("DB_PASSWORD"),
-        "port": os.getenv("DB_PORT")
-    }
-
-    final_results = []
-
-    try:
-        # 단일 연결 유지
-        with psycopg2.connect(**conn_params) as conn:
-            with conn.cursor() as cur:
-                for i, news in enumerate(news_list):
-                    print(f"\n--- 🔄 [{i+1}/{len(news_list)}] 처리 중 ---")
-                    
-                    # [중복 체크] 기존 커서 재사용 (오버헤드 없음)
-                    if is_article_exists(cur, news['naver_link']):
-                        print(f"⏩ 이미 분석된 기사입니다. (건너뜀)")
-                        continue
-
-                    body_text = crawler.extract_body(news['naver_link'])
-                    if not body_text or len(body_text) < 200:
-                        print("⚠️ 본문 부족으로 패스")
-                        continue
-                        
-                    analysis_result = analyzer.analyze_and_reconstruct(body_text)
-                    
-                    if analysis_result and validate_analysis(analysis_result):
-                        analysis_result['meta'] = {
-                            "title": news['title'],
-                            "url": news['naver_link'],
-                            "pub_date": news['pub_date']
-                        }
-                        final_results.append(analysis_result)
-                        print("✅ 분석 및 검증 완료")
-                    else:
-                        print("❌ AI 응답 데이터 품질 미달")
-
-                    if i < len(news_list) - 1:
-                        time.sleep(5) 
-
-                # 루프 종료 후 저장 시 커넥션도 함께 전달
-                if final_results:
-                    save_to_db(conn, cur, final_results)
-                    print(f"\n✅ [DB] 파이프라인 처리를 완료했습니다.")
-
-    except Exception as e:
-        print(f"❌ [DB] 데이터베이스 작업 중 오류 발생: {e}")
-
 if __name__ == "__main__":
-    run_news_now_pipeline(keyword="삼성전자 HBM", count=2)
+    tasks = [
+        {"category": "정치", "keyword": "국회 정책"},
+        {"category": "경제", "keyword": "증시 금리"},
+        {"category": "사회", "keyword": "사회 복지"},
+        {"category": "IT과학", "keyword": "AI 반도체"}
+    ]
+    
+    print("🚀 [NewsNow] 대규모 데이터 벌크업 파이프라인 가동!")
+    start_time = time.time()
+
+    for task in tasks:
+        cat = task['category']
+        kw = task['keyword']
+        
+        print(f"\n📂 [{cat}] 카테고리 수집 시작 (검색어: {kw})")
+        run_news_now_pipeline(keyword=kw, count=5, category=cat)
+        
+        print(f"☕ {cat} 섹션 완료. 다음 작업을 위해 10초간 대기합니다...")
+        time.sleep(10)
+
+    end_time = time.time()
+    elapsed = (end_time - start_time) / 60
+    print(f"\n✨ [벌크업 완료] 총 소요 시간: {elapsed:.2f}분")
