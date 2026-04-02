@@ -16,7 +16,7 @@ class NaverNewsCrawler:
         if not self.client_id or not self.client_secret:
             raise ValueError("네이버 API 키가 .env 파일에 설정되지 않았습니다! 확인해주세요.")
 
-    def get_news(self, query, display=5):
+    def get_news(self, query, display=5, start=1):
         """
         [1단계] 네이버 검색 API를 통해 뉴스의 메타데이터(제목, 링크 등)를 가져옵니다.
         """
@@ -27,7 +27,8 @@ class NaverNewsCrawler:
         params = {
             "query": query,      # 검색어
             "display": display,  # 가져올 기사 수
-            "sort": "date"       # 최신순 정렬 (최신 뉴스를 가져옴)
+            "start": start,      # 검색 시작 위치 (페이징)
+            "sort": "date"       # 최신순 정렬
         }
 
         try:
