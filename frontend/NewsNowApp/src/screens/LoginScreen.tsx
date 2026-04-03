@@ -26,7 +26,7 @@ export default function LoginScreen() {
         {/* 위쪽 (로고 + 텍스트) */}
         <View style={styles.topArea}>
           <Image
-            source={require('../assets/images/logo.jpg')}
+            source={require('../assets/images/nplogo.png')}
             style={styles.logoImage}
             resizeMode="contain"
           />
@@ -86,14 +86,14 @@ const styles = StyleSheet.create({
   },
 
   logoImage: {
-    width: 200,   // ← 동그라미 크기랑 동일
-    height: 200,
-    marginBottom: 40,
+    width: 250,   // ← 동그라미 크기랑 동일
+    height: 250,
+    marginBottom: 1,
   },
 
   welcomeText: {
     fontSize: 20,
-    color: '#829BE9',
+    color: '#6086E0',
     textAlign: 'center',
     fontWeight: '600',
   },
