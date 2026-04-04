@@ -41,3 +41,4 @@ venv/
 .env
 *.log
 .vscode/
+newsnow.session.sql
