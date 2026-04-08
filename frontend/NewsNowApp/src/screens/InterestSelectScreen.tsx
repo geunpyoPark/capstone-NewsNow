@@ -18,9 +18,11 @@ const categories = [
 
 type Props = {
   navigation: any;
+  route: any;
 };
 
-export default function InterestSelectScreen({ navigation }: Props) {
+export default function InterestSelectScreen({ navigation, route }: Props) {
+  const { userEmail } = route.params;
   const [selected, setSelected] = useState<string[]>([]);
 
   const handleSelect = (item: string) => {
@@ -45,6 +47,7 @@ export default function InterestSelectScreen({ navigation }: Props) {
       selectedCategories: selected,
       currentCategoryIndex: 0,
       categoryScores: {},
+      userEmail, // 이메일 넘기기
     });
   };
 
@@ -90,100 +93,19 @@ export default function InterestSelectScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F7F9FF',
-    paddingHorizontal: 20,
-  },
-
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginTop: 60,
-    color: '#111827',
-  },
-
-  subtitle: {
-    textAlign: 'center',
-    color: '#6B7280',
-    marginTop: 12,
-    fontSize: 14,
-  },
-
-  centerArea: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingTop: 40,
-  },
-
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 12,
-  },
-
-  card: {
-    width: '43%',
-    aspectRatio: 0.8,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#E0E7FF',
-    overflow: 'hidden',
-  },
-
-  selectedCard: {
-    borderColor: '#5D7CE9',
-    backgroundColor: '#EEF2FF',
-  },
-
-  iconArea: {
-    flex: 3,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  textArea: {
-    flex: 1,
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    paddingBottom: 10,
-  },
-
-  icon: {
-    width: 85,
-    height: 85,
-    resizeMode: 'contain',
-  },
-
-  cardText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#111827',
-  },
-
-  selectedText: {
-    color: '#5D7CE9',
-  },
-
-  bottomArea: {
-    paddingBottom: 24,
-  },
-
-  nextButton: {
-    backgroundColor: '#5D7CE9',
-    paddingVertical: 18,
-    borderRadius: 15,
-    alignItems: 'center',
-    width: '80%',
-    alignSelf: 'center',
-  },
-
-  nextButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  container: { flex: 1, backgroundColor: '#F7F9FF', paddingHorizontal: 20 },
+  title: { fontSize: 24, fontWeight: '700', textAlign: 'center', marginTop: 60, color: '#111827' },
+  subtitle: { textAlign: 'center', color: '#6B7280', marginTop: 12, fontSize: 14 },
+  centerArea: { flex: 1, justifyContent: 'center', paddingTop: 40 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12 },
+  card: { width: '43%', aspectRatio: 0.8, backgroundColor: '#FFFFFF', borderRadius: 20, borderWidth: 2, borderColor: '#E0E7FF', overflow: 'hidden' },
+  selectedCard: { borderColor: '#5D7CE9', backgroundColor: '#EEF2FF' },
+  iconArea: { flex: 3, justifyContent: 'center', alignItems: 'center' },
+  textArea: { flex: 1, justifyContent: 'flex-start', alignItems: 'center', paddingBottom: 10 },
+  icon: { width: 85, height: 85, resizeMode: 'contain' },
+  cardText: { fontSize: 15, fontWeight: '600', color: '#111827' },
+  selectedText: { color: '#5D7CE9' },
+  bottomArea: { paddingBottom: 24 },
+  nextButton: { backgroundColor: '#5D7CE9', paddingVertical: 18, borderRadius: 15, alignItems: 'center', width: '80%', alignSelf: 'center' },
+  nextButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
 });
