@@ -18,7 +18,7 @@ GoogleSignin.configure({
   webClientId: '901962887380-7pvrduri2p8ph9es2fq7vtch3fcpc0lg.apps.googleusercontent.com',
 });
 
-const BACKEND_URL = 'http://172.30.72.204:8000';
+const BACKEND_URL = 'http://172.30.73.67:8000';
 
 export default function LoginScreen({ navigation }: { navigation: any }) {
   // 🟡 카카오 로그인
