@@ -3,10 +3,16 @@ import os
 import time
 
 import psycopg2
+from psycopg2.extras import Json
 from dotenv import load_dotenv
 
 from comic_generator import ComicGenerator
-from main_pipeline import generate_comic_scenarios
+from main_pipeline import (
+    ensure_comic_storyboards_table,
+    generate_comic_storyboard,
+    resolve_level_1_text,
+    validate_storyboard,
+)
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -22,17 +28,6 @@ def get_db_connection():
         "port": os.getenv("DB_PORT"),
     }
     return psycopg2.connect(**conn_params)
-
-
-def resolve_level_1_text(levels, fallback_title):
-    if not isinstance(levels, dict):
-        return fallback_title
-    return (
-        levels.get("level_1")
-        or levels.get("level1")
-        or levels.get("1")
-        or fallback_title
-    )
 
 
 def is_missing_image(comic_path):
@@ -77,6 +72,7 @@ def regenerate_missing_comics(limit=None):
 
     with get_db_connection() as conn:
         with conn.cursor() as cur:
+            ensure_comic_storyboards_table(cur)
             targets = fetch_target_articles(cur, limit)
 
             if not targets:
@@ -94,19 +90,42 @@ def regenerate_missing_comics(limit=None):
                 title = article["title"]
                 level_1_text = resolve_level_1_text(article["levels"], title)
 
-                print(f"\n[{idx}/{len(targets)}] 카드뉴스 복구 중: {title[:40]}...")
+                print(f"\n[{idx}/{len(targets)}] 스토리형 만화 복구 중: {title[:40]}...")
                 try:
-                    scenarios = generate_comic_scenarios(title, level_1_text)
-                    comic_img = comic_gen.generate_news_card(scenarios)
+                    storyboard = generate_comic_storyboard(title, level_1_text)
+                    if not validate_storyboard(storyboard):
+                        raise ValueError("스토리보드 JSON 구조가 올바르지 않습니다.")
+
+                    render_result = comic_gen.generate_story_comic(storyboard)
 
                     img_rel_path = f"static/comics/{int(time.time() * 100)}.png"
                     img_full_path = os.path.join(BASE_DIR, img_rel_path)
-                    comic_img.save(img_full_path)
+                    render_result["image"].save(img_full_path)
 
                     cur.execute(
                         "UPDATE news_articles SET comic_path = %s WHERE id = %s",
                         (img_rel_path, article_id),
                     )
+                    cur.execute("""
+                        INSERT INTO comic_storyboards (
+                            article_id, character_profile, style_profile, panels, bubble_layouts, comic_path, updated_at
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, NOW())
+                        ON CONFLICT (article_id) DO UPDATE SET
+                            character_profile = EXCLUDED.character_profile,
+                            style_profile = EXCLUDED.style_profile,
+                            panels = EXCLUDED.panels,
+                            bubble_layouts = EXCLUDED.bubble_layouts,
+                            comic_path = EXCLUDED.comic_path,
+                            updated_at = NOW();
+                    """, (
+                        article_id,
+                        Json(storyboard["character_profile"]),
+                        Json(storyboard["style_profile"]),
+                        Json(storyboard["panels"]),
+                        Json(render_result.get("bubble_layouts", [])),
+                        img_rel_path,
+                    ))
                     conn.commit()
 
                     success_count += 1
