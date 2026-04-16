@@ -7,15 +7,74 @@ import {
   SafeAreaView,
   StatusBar,
   Image,
+  Alert,
 } from 'react-native';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { login as kakaoLogin } from '@react-native-kakao/user';
 
-export default function LoginScreen() {
-  const handleKakaoLogin = () => {
-    console.log('카카오 로그인');
+GoogleSignin.configure({
+  iosClientId:
+    '901962887380-89qlr9pk1snulfok0cu45dpaleal5b5k.apps.googleusercontent.com',
+  webClientId: '901962887380-7pvrduri2p8ph9es2fq7vtch3fcpc0lg.apps.googleusercontent.com',
+});
+
+const BACKEND_URL = 'http://192.168.43.200:8000';
+
+export default function LoginScreen({ navigation }: { navigation: any }) {
+  const handleKakaoLogin = async () => {
+    try {
+      const token = await kakaoLogin();
+
+      const res = await fetch(`${BACKEND_URL}/auth/kakao`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: token.accessToken }),
+      });
+
+      const data = await res.json();
+      console.log('카카오 로그인 성공:', data);
+
+      Alert.alert('로그인 성공!', `${data.name}님 환영해요!`, [
+        {
+          text: '확인',
+          onPress: () => navigation.navigate('InterestSelect', { userEmail: data.email }),
+        },
+      ]);
+    } catch (error) {
+      console.error('카카오 로그인 실패:', error);
+      Alert.alert('로그인 실패', '카카오 로그인에 실패했습니다.');
+    }
   };
 
-  const handleGoogleLogin = () => {
-    console.log('구글 로그인');
+  const handleGoogleLogin = async () => {
+    try {
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+      const token = userInfo.data?.idToken;
+      if (!token) {
+        throw new Error('토큰 없음');
+      }
+
+      const res = await fetch(`${BACKEND_URL}/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+
+      const text = await res.text();
+      const data = JSON.parse(text);
+      console.log('구글 로그인 성공:', data);
+
+      Alert.alert('로그인 성공!', `${data.name}님 환영해요!`, [
+        {
+          text: '확인',
+          onPress: () => navigation.navigate('InterestSelect', { userEmail: data.email }),
+        },
+      ]);
+    } catch (error) {
+      console.error('구글 로그인 실패:', error);
+      Alert.alert('로그인 실패', '구글 로그인에 실패했습니다.');
+    }
   };
 
   return (
@@ -23,20 +82,17 @@ export default function LoginScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       <View style={styles.container}>
-        {/* 위쪽 (로고 + 텍스트) */}
         <View style={styles.topArea}>
           <Image
             source={require('../assets/images/nplogo.png')}
             style={styles.logoImage}
             resizeMode="contain"
           />
-
           <Text style={styles.welcomeText}>
-  같은 뉴스,{'\n'}내 수준에 맞는 문장으로!
-</Text>
+            같은 뉴스,{'\n'}내 수준에 맞는 문장으로!
+          </Text>
         </View>
 
-        {/* 아래 (간편 로그인) */}
         <View style={styles.bottomArea}>
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
@@ -46,19 +102,11 @@ export default function LoginScreen() {
 
           <View style={styles.socialRow}>
             <TouchableOpacity style={styles.socialCircle} onPress={handleKakaoLogin}>
-              <Image
-                source={require('../assets/images/kakao.png')}
-                style={styles.socialIcon}
-                resizeMode="contain"
-              />
+              <Image source={require('../assets/images/kakao.png')} style={styles.socialIcon} />
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.socialCircle} onPress={handleGoogleLogin}>
-              <Image
-                source={require('../assets/images/google.png')}
-                style={styles.socialIcon}
-                resizeMode="contain"
-              />
+              <Image source={require('../assets/images/google.png')} style={styles.socialIcon} />
             </TouchableOpacity>
           </View>
         </View>
@@ -68,83 +116,16 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-
-  /* 위쪽 */
-  topArea: {
-    flex: 3,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  logoImage: {
-    width: 250,   // ← 동그라미 크기랑 동일
-    height: 250,
-    marginBottom: 1,
-  },
-
-  welcomeText: {
-    fontSize: 20,
-    color: '#6086E0',
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-
-  /* 아래 */
-  bottomArea: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    paddingBottom: 60,
-  },
-
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-    width: '80%',
-  },
-
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E5E5E5',
-  },
-
-  dividerText: {
-    marginHorizontal: 12,
-    fontSize: 14,
-    color: '#888888',
-  },
-
-  socialRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 20,
-  },
-
-  socialCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  socialIcon: {
-    width: 36,
-    height: 36,
-  },
+  safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
+  topArea: { flex: 3, justifyContent: 'center', alignItems: 'center' },
+  logoImage: { width: 200, height: 200, marginBottom: 40 },
+  welcomeText: { fontSize: 20, color: '#6086E0', textAlign: 'center', fontWeight: '600' },
+  bottomArea: { flex: 1, justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 60 },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, width: '80%' },
+  dividerLine: { flex: 1, height: 1, backgroundColor: '#E5E5E5' },
+  dividerText: { marginHorizontal: 12, fontSize: 14, color: '#888888' },
+  socialRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 20 },
+  socialCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E5E5E5', justifyContent: 'center', alignItems: 'center' },
+  socialIcon: { width: 36, height: 36 },
 });
