@@ -1,3 +1,5 @@
+"""네이버 뉴스 검색과 기사 본문 추출을 담당하는 수집 모듈."""
+
 import os
 import requests
 from bs4 import BeautifulSoup
@@ -7,6 +9,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class NaverNewsCrawler:
+    """검색 API 메타데이터 수집과 기사 HTML 본문 정제를 묶은 클래스."""
+
     def __init__(self):
         self.client_id = os.getenv("NAVER_CLIENT_ID")
         self.client_secret = os.getenv("NAVER_CLIENT_SECRET")
@@ -18,7 +22,7 @@ class NaverNewsCrawler:
 
     def get_news(self, query, display=5, start=1):
         """
-        [1단계] 네이버 검색 API를 통해 뉴스의 메타데이터(제목, 링크 등)를 가져옵니다.
+        [1단계] 네이버 검색 API를 통해 뉴스 메타데이터를 가져옵니다.
         """
         headers = {
             "X-Naver-Client-Id": self.client_id,
@@ -57,7 +61,7 @@ class NaverNewsCrawler:
 
     def extract_body(self, url):
         """
-        [2단계] 링크에 접속하여 기사 본문 텍스트만 추출합니다. (찌꺼기 제거 최적화)
+        [2단계] 기사 링크에 접속해 본문 텍스트만 최대한 깨끗하게 추출합니다.
         """
         try:
             # 봇 차단을 막기 위한 User-Agent 헤더 설정

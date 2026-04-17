@@ -1,14 +1,15 @@
+"""DB에 저장된 최신 뉴스 분석 결과를 사람이 빠르게 점검하는 리뷰 스크립트."""
+
 import os
 import json
 import psycopg2
 from dotenv import load_dotenv
 
-# 퀄리티 리뷰 결과 파일
-
 # .env 로드
 load_dotenv()
 
 def check_latest_article():
+    """가장 최근 기사 1건을 불러와 레벨/퀴즈/하이라이트를 콘솔에 출력한다."""
     conn_params = {
         "host": os.getenv("DB_HOST"),
         "database": os.getenv("DB_NAME"),
@@ -71,4 +72,5 @@ def check_latest_article():
         print(f"❌ DB 조회 중 에러: {e}")
 
 if __name__ == "__main__":
+    # 단독 실행 시 최신 샘플을 바로 확인할 수 있게 한다.
     check_latest_article()
