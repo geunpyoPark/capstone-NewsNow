@@ -1,3 +1,5 @@
+"""기사 본문을 쉬운 레벨 텍스트, 퀴즈, 하이라이트로 재구성하는 AI 분석 모듈."""
+
 import os
 import json
 import time
@@ -21,6 +23,8 @@ def is_retryable_error(exception):
     return any(keyword in error_msg for keyword in retryable_keywords)
 
 class NewsAnalyzer:
+    """Gemini를 이용해 기사 분석 결과를 JSON 구조로 반환하는 래퍼."""
+
     def __init__(self):
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
@@ -41,7 +45,8 @@ class NewsAnalyzer:
     )
     def analyze_and_reconstruct(self, news_text):
         """
-        뉴스 본문을 받아 4단계 난이도로 재구성, 퀴즈 생성 및 핵심 단어 하이라이트를 추출합니다.
+        뉴스 본문을 받아 4단계 난이도로 재구성하고,
+        퀴즈/하이라이트까지 한 번에 생성합니다.
         """
         prompt = f"""
         너는 독해 교육 서비스 'NewsNow'의 시니어 에디터야. 

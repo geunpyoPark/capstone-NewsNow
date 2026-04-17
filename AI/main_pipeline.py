@@ -1,19 +1,28 @@
+"""뉴스 수집부터 분석, 스토리보드 생성, 만화 렌더링까지 묶는 AI 메인 파이프라인."""
+
 import os
 import time
 import json
-import psycopg2
-from psycopg2.extras import Json
+from pathlib import Path
 from dotenv import load_dotenv
 import google.generativeai as genai
 from news_crawler import NaverNewsCrawler
 from news_analyzer import NewsAnalyzer, is_retryable_error
 from comic_generator import ComicGenerator
+from ai_db import (
+    ensure_comic_storyboards_table,
+    get_db_connection,
+    is_article_exists,
+    save_news_result,
+)
 
-# 1. 환경 설정 및 모델 로드
+# 공통 환경변수와 Gemini 텍스트 모델을 초기화한다.
 load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 # 2026년 기준 가장 응답 속도가 빠른 Flash 모델을 사용합니다.
 gemini_model = genai.GenerativeModel('gemini-flash-latest') 
+BASE_DIR = Path(__file__).resolve().parent
+DEFAULT_COMIC_DIR = BASE_DIR / "static" / "comics"
 
 # [필터링] 학생용 서비스에 부적절한 가십성/광고성 키워드 목록
 BLACKLIST_KEYWORDS = [
@@ -22,12 +31,12 @@ BLACKLIST_KEYWORDS = [
 ]
 
 def validate_analysis(result):
-    """AI 분석 결과 필수 데이터 검증"""
+    """분석 결과에 백엔드가 기대하는 최소 필드가 있는지 확인한다."""
     required_keys = ["levels", "quizzes", "highlights"]
     return all(k in result and result[k] for k in required_keys)
 
 def validate_storyboard(storyboard):
-    """스토리형 4컷 만화 스토리보드 구조 검증"""
+    """이미지 생성 전에 4컷 스토리보드 JSON 구조를 검증한다."""
     required_root_keys = ["character_profile", "style_profile", "panels"]
     if not all(key in storyboard for key in required_root_keys):
         return False
@@ -96,7 +105,7 @@ def normalize_story_type(story_type):
     return normalized if normalized in allowed_types else "problem"
 
 def detect_story_type(title, text):
-    """추가 API 호출 없이 제목/요약문 기반으로 story_type을 추정합니다."""
+    """추가 API 호출 없이 제목/요약문 키워드만으로 뉴스 유형을 추정한다."""
     source = f"{title} {text}".lower()
 
     diplomacy_keywords = [
@@ -183,7 +192,7 @@ def build_fallback_dialogues(title, text, story_type):
     return guides.get(story_type, guides["problem"])
 
 def extract_panel_dialogues(title, text, story_type):
-    """뉴스 핵심 사실을 4컷 대사 초안으로 먼저 추출합니다."""
+    """뉴스 핵심 사실을 4컷 말풍선 초안으로 먼저 뽑아낸다."""
     story_guide = story_type_guide(story_type)
     prompt = f"""
 너는 초등학생에게 뉴스를 만화로 설명하는 작가야.
@@ -222,7 +231,7 @@ def extract_panel_dialogues(title, text, story_type):
 
 
 def generate_comic_storyboard(title, text, dialogues=None, story_type="problem"):
-    """level_1 재해석본을 바탕으로 대화 중심 스토리형 4컷 뉴스 만화 스토리보드를 생성합니다."""
+    """쉬운 요약문과 대사를 바탕으로 이미지 생성용 4컷 스토리보드를 만든다."""
     story_guide = story_type_guide(story_type)
     dialogue_section = ""
     if dialogues:
@@ -374,89 +383,125 @@ def generate_comic_storyboard(title, text, dialogues=None, story_type="problem")
     return storyboard
 
 
-def ensure_comic_storyboards_table(cursor):
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS comic_storyboards (
-            article_id INTEGER PRIMARY KEY REFERENCES news_articles(id) ON DELETE CASCADE,
-            character_profile JSONB NOT NULL,
-            style_profile JSONB NOT NULL,
-            panels JSONB NOT NULL,
-            bubble_layouts JSONB,
-            comic_path TEXT,
-            created_at TIMESTAMPTZ DEFAULT NOW(),
-            updated_at TIMESTAMPTZ DEFAULT NOW()
-        );
-    """)
+def get_default_font_path():
+    """배포 환경에서도 안전하게 찾을 수 있는 기본 폰트 경로."""
+    return str(BASE_DIR / "my_font.ttf")
 
-def save_to_db(conn, cursor, news):
-    """DB 저장 (이미지 경로 및 카테고리 포함)"""
+
+def build_article_meta(news, category):
+    return {
+        "title": news["title"],
+        "url": news["naver_link"],
+        "pub_date": news["pub_date"],
+        "category": category,
+    }
+
+
+def save_comic_image(image, output_dir=None, file_stem=None):
+    """생성된 만화 이미지를 로컬 파일로 저장하고 경로를 반환한다."""
+    target_dir = Path(output_dir) if output_dir else DEFAULT_COMIC_DIR
+    target_dir.mkdir(parents=True, exist_ok=True)
+    stem = file_stem or str(int(time.time() * 100))
+    output_path = target_dir / f"{stem}.png"
+    image.save(output_path)
+    return str(output_path)
+
+
+def generate_news_comic_result(
+    title,
+    body,
+    article_id=None,
+    category=None,
+    comic_gen=None,
+    output_dir=None,
+    save_image=True,
+):
+    """
+    백엔드에서 바로 호출할 수 있는 AI 파이프라인 진입점.
+    입력은 기사 제목/본문 중심으로 단순화하고, 결과는 JSON 직렬화 가능한 dict로 반환합니다.
+    """
+    analyzer = NewsAnalyzer()
+    comic_gen = comic_gen or ComicGenerator(font_path=get_default_font_path())
+
+    analysis = analyzer.analyze_and_reconstruct(body[:2500])
+    if not (analysis and validate_analysis(analysis)):
+        raise ValueError("뉴스 분석 결과가 비어 있거나 형식이 올바르지 않습니다.")
+
+    levels = analysis.get("levels", {})
+    level_1_text = resolve_level_1_text(levels, title)
+    story_type = detect_story_type(title, level_1_text)
+
     try:
-        ensure_comic_storyboards_table(cursor)
-        cursor.execute("""
-            INSERT INTO news_articles (title, url, pub_date, category, comic_path)
-            VALUES (%s, %s, %s, %s, %s)
-            ON CONFLICT (url) DO NOTHING
-            RETURNING id;
-        """, (
-            news['meta']['title'],
-            news['meta']['url'],
-            news['meta']['pub_date'],
-            news['meta'].get('category', '일반'),
-            news.get('comic_path')
-        ))
+        dialogues = extract_panel_dialogues(title, level_1_text, story_type)
+    except Exception as dialogue_error:
+        print(f"⚠️ 대사 추출 실패, fallback 사용: {dialogue_error}")
+        dialogues = build_fallback_dialogues(title, level_1_text, story_type)
 
-        result = cursor.fetchone()
-        if not result: return
-        article_id = result[0]
+    if not validate_panel_dialogues(dialogues):
+        print("⚠️ 대사 형식 검증 실패, fallback 사용")
+        dialogues = build_fallback_dialogues(title, level_1_text, story_type)
 
-        cursor.execute("INSERT INTO article_versions (article_id, levels) VALUES (%s, %s);", (article_id, Json(news['levels'])))
-        cursor.execute("INSERT INTO article_assets (article_id, quizzes, highlights) VALUES (%s, %s, %s);", (article_id, Json(news['quizzes']), Json(news['highlights'])))
-        if news.get("storyboard"):
-            storyboard = news["storyboard"]
-            cursor.execute("""
-                INSERT INTO comic_storyboards (
-                    article_id, character_profile, style_profile, panels, bubble_layouts, comic_path, updated_at
-                )
-                VALUES (%s, %s, %s, %s, %s, %s, NOW())
-                ON CONFLICT (article_id) DO UPDATE SET
-                    character_profile = EXCLUDED.character_profile,
-                    style_profile = EXCLUDED.style_profile,
-                    panels = EXCLUDED.panels,
-                    bubble_layouts = EXCLUDED.bubble_layouts,
-                    comic_path = EXCLUDED.comic_path,
-                    updated_at = NOW();
-            """, (
-                article_id,
-                Json(storyboard["character_profile"]),
-                Json(storyboard["style_profile"]),
-                Json(storyboard["panels"]),
-                Json(news.get("bubble_layouts", [])),
-                news.get("comic_path")
-            ))
+    storyboard = generate_comic_storyboard(
+        title,
+        level_1_text,
+        dialogues=dialogues,
+        story_type=story_type,
+    )
+    if not validate_storyboard(storyboard):
+        raise ValueError("스토리보드 JSON 구조가 올바르지 않습니다.")
 
-        conn.commit()
-        print(f"✨ [DB] 저장 성공: {news['meta']['title'][:20]}...")
-    except Exception as e:
-        conn.rollback()
-        print(f"❌ [DB] 저장 실패: {e}")
+    render_result = comic_gen.generate_story_comic(storyboard)
+    comic_path = None
+    if save_image:
+        comic_path = save_comic_image(render_result["image"], output_dir=output_dir)
+
+    return {
+        "article_id": article_id,
+        "story_type": story_type,
+        "analysis": {
+            "levels": analysis["levels"],
+            "quizzes": analysis["quizzes"],
+            "highlights": analysis["highlights"],
+        },
+        "dialogues": dialogues,
+        "storyboard": storyboard,
+        "bubble_layouts": render_result.get("bubble_layouts", []),
+        "comic_image_path": comic_path,
+        "status": "success",
+        "category": category,
+    }
+
+
+def process_news_item(news, category, comic_gen=None, output_dir=None):
+    """기존 배치 파이프라인에서 쓰기 쉬운 저장용 dict 형태로 변환한다."""
+    result = generate_news_comic_result(
+        title=news["title"],
+        body=news["body"],
+        category=category,
+        comic_gen=comic_gen,
+        output_dir=output_dir,
+    )
+    result["meta"] = build_article_meta(news, category)
+    return {
+        "levels": result["analysis"]["levels"],
+        "quizzes": result["analysis"]["quizzes"],
+        "highlights": result["analysis"]["highlights"],
+        "storyboard": result["storyboard"],
+        "bubble_layouts": result["bubble_layouts"],
+        "comic_path": result["comic_image_path"],
+        "meta": result["meta"],
+    }
 
 def run_news_now_pipeline(keyword, count, category):
-    """카테고리별 뉴스 수집 및 처리 메인 루프"""
+    """배치 실행용 루프. 기사 수집, AI 처리, DB 저장을 한 번에 수행한다."""
     crawler = NaverNewsCrawler()
-    analyzer = NewsAnalyzer()
-    comic_gen = ComicGenerator(font_path="my_font.ttf") # 근표 님의 M4 Pro 최적화 엔진
-    
-    conn_params = {
-        "host": os.getenv("DB_HOST"), "database": os.getenv("DB_NAME"),
-        "user": os.getenv("DB_USER"), "password": os.getenv("DB_PASSWORD"),
-        "port": os.getenv("DB_PORT")
-    }
+    comic_gen = ComicGenerator(font_path=get_default_font_path()) # 근표 님의 M4 Pro 최적화 엔진
 
     results_count = 0
     start_idx = 1
 
     try:
-        with psycopg2.connect(**conn_params) as conn:
+        with get_db_connection() as conn:
             with conn.cursor() as cur:
                 ensure_comic_storyboards_table(cur)
                 while results_count < count:
@@ -474,62 +519,38 @@ def run_news_now_pipeline(keyword, count, category):
 
                         body = crawler.extract_body(news['naver_link'])
                         if not body or len(body) < 200: continue
+                        news_with_body = {**news, "body": body}
                         
                         print(f"\n🧠 [{category}] 뉴스 분석 중: {news['title'][:25]}...")
                         try:
-                            analysis = analyzer.analyze_and_reconstruct(body[:2500])
-                            if not (analysis and validate_analysis(analysis)): continue
-
-                            levels = analysis.get('levels', {})
-                            l1_text = resolve_level_1_text(levels, news['title'])
-
                             print(f"🎨 스토리형 4컷 뉴스 만화 제작 중...")
                             try:
-                                print(f"  🧭 뉴스 유형 분류 중...")
-                                story_type = detect_story_type(news['title'], l1_text)
-                                print(f"  유형: {story_type}")
-                                print(f"  ✍️  대사 추출 중...")
-                                try:
-                                    dialogues = extract_panel_dialogues(news['title'], l1_text, story_type)
-                                except Exception as dialogue_error:
-                                    print(f"  ⚠️ 대사 추출 실패, fallback 사용: {dialogue_error}")
-                                    dialogues = build_fallback_dialogues(news['title'], l1_text, story_type)
-                                if not validate_panel_dialogues(dialogues):
-                                    print("  ⚠️ 대사 형식 검증 실패, fallback 사용")
-                                    dialogues = build_fallback_dialogues(news['title'], l1_text, story_type)
-                                print(f"  1컷: {dialogues.get('panel_1', '')}")
-                                print(f"  2컷: {dialogues.get('panel_2', '')}")
-                                print(f"  3컷: {dialogues.get('panel_3', '')}")
-                                print(f"  4컷: {dialogues.get('panel_4', '')}")
-                                storyboard = generate_comic_storyboard(
-                                    news['title'],
-                                    l1_text,
-                                    dialogues=dialogues,
-                                    story_type=story_type,
+                                analysis = process_news_item(
+                                    news_with_body,
+                                    category=category,
+                                    comic_gen=comic_gen,
                                 )
-                                if not validate_storyboard(storyboard):
-                                    raise ValueError("스토리보드 JSON 구조가 올바르지 않습니다.")
-
-                                render_result = comic_gen.generate_story_comic(storyboard)
-
-                                os.makedirs("static/comics", exist_ok=True)
-                                img_path = f"static/comics/{int(time.time()*100)}.png"
-                                render_result["image"].save(img_path)
-                                analysis['comic_path'] = img_path
-                                analysis['storyboard'] = storyboard
-                                analysis['bubble_layouts'] = render_result.get("bubble_layouts", [])
-                                print(f"✅ 스토리형 만화 생성 완료: {img_path}")
+                                print(f"✅ 스토리형 만화 생성 완료: {analysis['comic_path']}")
                             except Exception as e:
                                 print(f"⚠️ 이미지 생성 오류: {e}")
-                                analysis['comic_path'] = None
-                                analysis['storyboard'] = None
-                                analysis['bubble_layouts'] = []
+                                fallback = generate_news_comic_result(
+                                    title=news["title"],
+                                    body=body,
+                                    category=category,
+                                    comic_gen=comic_gen,
+                                    save_image=False,
+                                )
+                                analysis = {
+                                    "levels": fallback["analysis"]["levels"],
+                                    "quizzes": fallback["analysis"]["quizzes"],
+                                    "highlights": fallback["analysis"]["highlights"],
+                                    "storyboard": None,
+                                    "bubble_layouts": [],
+                                    "comic_path": None,
+                                    "meta": build_article_meta(news, category),
+                                }
 
-                            analysis['meta'] = {
-                                "title": news['title'], "url": news['naver_link'],
-                                "pub_date": news['pub_date'], "category": category
-                            }
-                            save_to_db(conn, cur, analysis)
+                            save_news_result(conn, cur, analysis)
                             results_count += 1
                         except Exception as e:
                             print(f"⚠️ 처리 에러: {e}")
@@ -539,10 +560,6 @@ def run_news_now_pipeline(keyword, count, category):
                     start_idx += 10
     except Exception as e:
         print(f"❌ 파이프라인 치명적 오류: {e}")
-
-def is_article_exists(cursor, url):
-    cursor.execute("SELECT 1 FROM news_articles WHERE url = %s", (url,))
-    return cursor.fetchone() is not None
 
 # ==========================================
 # 실행부: 전 카테고리 자동 순회

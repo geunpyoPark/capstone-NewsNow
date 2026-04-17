@@ -1,7 +1,10 @@
+"""스토리보드를 4컷 뉴스 만화 이미지로 렌더링하는 생성 모듈."""
+
 import sys
 import textwrap
 import os
 from io import BytesIO
+from pathlib import Path
 
 import torch
 from diffusers import AutoPipelineForText2Image
@@ -11,6 +14,8 @@ from google import genai
 
 
 class ComicGenerator:
+    """패널 이미지 생성, 자동 크롭, 말풍선 배치를 한 번에 처리한다."""
+
     def __init__(self, font_path="my_font.ttf"):
         print("🚀 NewsNow 스토리형 만화 엔진 가동...")
         load_dotenv()
@@ -33,13 +38,18 @@ class ComicGenerator:
                 variant="fp16",
             ).to("mps")
 
+        font_file = Path(font_path)
+        if not font_file.is_absolute():
+            font_file = Path(__file__).resolve().parent / font_file
+
         try:
-            self.font = ImageFont.truetype(font_path, 26)
+            self.font = ImageFont.truetype(str(font_file), 26)
             print(f"✅ 폰트 로드 성공: '{font_path}'")
         except Exception:
             print("❌ 폰트 로드 실패! 경로를 확인하세요.")
             sys.exit()
 
+        # 모든 컷에 공통으로 강제할 화풍/구도 규칙.
         self.fixed_style = (
             "high quality Korean webtoon illustration, polished shading, clean line art, "
             "highly expressive faces, dynamic pose, dramatic body language, cinematic framing, "
@@ -47,6 +57,7 @@ class ComicGenerator:
             "soft cinematic lighting, single scene, single panel, one moment only, "
             "detailed face, clear focal subject, one main child only, no text, no letters, no symbols, no watermark"
         )
+        # 생성 모델이 자주 만들어내는 불필요한 요소를 억제하는 금지 프롬프트.
         self.negative_prompt = (
             "split panels, multiple panels, collage, storyboard page, comic grid, contact sheet, "
             "duplicate character in background, repeated small frames, inset panels, text, caption, "
@@ -61,6 +72,7 @@ class ComicGenerator:
         )
 
     def _build_character_prompt(self, storyboard):
+        """스토리보드의 주인공 정보를 이미지 프롬프트 문장으로 압축한다."""
         character = storyboard["character_profile"]
         style = storyboard["style_profile"]
         appearance = character.get("appearance", "")
@@ -83,6 +95,7 @@ class ComicGenerator:
         )
 
     def _build_panel_prompt(self, storyboard, panel, panel_index):
+        """컷 역할, 장면 정보, 금지 요소를 합쳐 패널용 프롬프트를 만든다."""
         role_hints = [
             "introduce the situation clearly with a strong first reaction, close-up or medium shot",
             "show the development with active explanation, visible hand gesture or meaningful object interaction",
@@ -108,6 +121,7 @@ class ComicGenerator:
         return ", ".join(part for part in prompt_parts if part)
 
     def _build_gemini_image_prompt(self, storyboard, panel, panel_index):
+        """Gemini 이미지 모델용으로 더 강한 제약을 추가한 프롬프트."""
         prompt = self._build_panel_prompt(storyboard, panel, panel_index)
         return (
             f"{prompt}, square image, single clean illustration, "
@@ -121,6 +135,7 @@ class ComicGenerator:
         return textwrap.wrap(text, width=max_chars) or [text]
 
     def _detect_content_bbox(self, img):
+        """생성 이미지에서 실제 내용물이 있는 대략적 영역을 찾는다."""
         width, height = img.size
         grayscale = img.convert("L")
         pixels = grayscale.load()
@@ -183,6 +198,7 @@ class ComicGenerator:
         return (left, top, left + size, top + size)
 
     def _trim_generated_margin(self, img):
+        """불필요한 여백이 큰 이미지를 잘라내고 다시 패널 크기로 맞춘다."""
         width, height = img.size
         content_bbox = self._detect_content_bbox(img)
         if not content_bbox:
@@ -204,6 +220,7 @@ class ComicGenerator:
         return cropped.resize((width, height), Image.Resampling.LANCZOS)
 
     def _autofit_panel(self, img):
+        """주인공과 핵심 사물이 화면을 충분히 채우도록 자동 확대/보정한다."""
         width, height = img.size
         content_bbox = self._detect_content_bbox(img)
         if not content_bbox:
@@ -231,6 +248,7 @@ class ComicGenerator:
         return max(widths, default=0), sum(heights) + max(0, (len(lines) - 1) * 8)
 
     def _estimate_protected_regions(self, img):
+        """말풍선을 피해야 할 주 피사체 영역을 거칠게 추정한다."""
         width, height = img.size
         protected = [
             (int(width * 0.22), int(height * 0.12), int(width * 0.78), int(height * 0.84)),
@@ -527,6 +545,7 @@ class ComicGenerator:
         return base_img, bubble_layouts
 
     def generate_story_comic(self, storyboard):
+        """4개 패널을 렌더링하고 최종 2x2 만화 그리드로 합친다."""
         panels = []
         all_bubble_layouts = []
 
