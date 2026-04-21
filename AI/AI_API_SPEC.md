@@ -21,6 +21,14 @@
 }
 ```
 
+## 필요 환경변수
+
+- `GEMINI_API_KEY`
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET`
+- 선택: `CLOUDINARY_FOLDER`
+
 ## Python 호출 예시
 
 ```python
@@ -62,7 +70,7 @@ result = generate_news_comic_result(
     "panels": []
   },
   "bubble_layouts": [],
-  "comic_image_path": "/abs/path/to/image.png",
+  "comic_image_path": "https://res.cloudinary.com/...",
   "status": "success",
   "category": "IT과학"
 }
@@ -77,7 +85,13 @@ result = generate_news_comic_result(
 - `dialogues`: 4컷 말풍선 초안
 - `storyboard`: 이미지 생성용 스토리보드 JSON
 - `bubble_layouts`: 후처리 말풍선 좌표 정보
-- `comic_image_path`: 서버 로컬 저장 경로. 운영 전환 시 Blob URL로 바꾸는 것이 좋음
+- `comic_image_path`: Cloudinary에 업로드된 공개 이미지 URL
+
+## 저장 방식
+
+- 이미지 파일은 로컬 디스크가 아니라 Cloudinary에 업로드된다.
+- DB의 `comic_path` 컬럼에는 로컬 경로 대신 Cloudinary 공개 URL이 저장된다.
+- 기존 예전 데이터에는 `static/comics/...` 형태 경로가 남아 있을 수 있지만, 새로 생성되는 데이터는 URL 기준이다.
 
 ## 에러 처리 권장
 
