@@ -9,6 +9,7 @@ import google.generativeai as genai
 from news_crawler import NaverNewsCrawler
 from news_analyzer import NewsAnalyzer, is_retryable_error
 from comic_generator import ComicGenerator
+from image_storage import is_cloudinary_configured, upload_image_to_cloudinary
 from ai_db import (
     ensure_comic_storyboards_table,
     get_db_connection,
@@ -22,7 +23,6 @@ genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 # 2026년 기준 가장 응답 속도가 빠른 Flash 모델을 사용합니다.
 gemini_model = genai.GenerativeModel('gemini-flash-latest') 
 BASE_DIR = Path(__file__).resolve().parent
-DEFAULT_COMIC_DIR = BASE_DIR / "static" / "comics"
 
 # [필터링] 학생용 서비스에 부적절한 가십성/광고성 키워드 목록
 BLACKLIST_KEYWORDS = [
@@ -398,13 +398,11 @@ def build_article_meta(news, category):
 
 
 def save_comic_image(image, output_dir=None, file_stem=None):
-    """생성된 만화 이미지를 로컬 파일로 저장하고 경로를 반환한다."""
-    target_dir = Path(output_dir) if output_dir else DEFAULT_COMIC_DIR
-    target_dir.mkdir(parents=True, exist_ok=True)
+    """생성된 만화 이미지를 Cloudinary에 업로드하고 공개 URL을 반환한다."""
+    if not is_cloudinary_configured():
+        raise ValueError("Cloudinary 환경변수가 없어 이미지 업로드를 진행할 수 없습니다.")
     stem = file_stem or str(int(time.time() * 100))
-    output_path = target_dir / f"{stem}.png"
-    image.save(output_path)
-    return str(output_path)
+    return upload_image_to_cloudinary(image, public_id=stem)
 
 
 def generate_news_comic_result(
