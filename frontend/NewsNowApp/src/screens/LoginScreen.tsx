@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { login as kakaoLogin } from '@react-native-kakao/user';
+import { getOnboarded } from '../utils/onboarding';
 
 GoogleSignin.configure({
   iosClientId:
@@ -18,9 +19,40 @@ GoogleSignin.configure({
   webClientId: '901962887380-7pvrduri2p8ph9es2fq7vtch3fcpc0lg.apps.googleusercontent.com',
 });
 
-const BACKEND_URL = 'http://172.30.73.67:8000';
+const BACKEND_URL = 'http://192.168.0.124:8000';
 
 export default function LoginScreen({ navigation }: { navigation: any }) {
+  // 로그인 성공 후 분기: 이 이메일이 이미 온보딩을 마쳤으면 Main으로,
+  // 처음이면 InterestSelect(관심 카테고리 선택 + 초기 퀴즈)로.
+  const routeAfterLogin = async (email: string, name?: string) => {
+    const onboarded = await getOnboarded(email);
+    Alert.alert('로그인 성공!', `${name ?? email}님 환영해요!`, [
+      {
+        text: '확인',
+        onPress: () => {
+          if (onboarded) {
+            // 이미 온보딩 완료 → 바로 홈
+            navigation.reset({
+              index: 0,
+              routes: [
+                {
+                  name: 'Main',
+                  params: {
+                    userEmail: email,
+                    selectedCategories: onboarded.selectedCategories,
+                  },
+                },
+              ],
+            });
+          } else {
+            // 첫 로그인 → 기존 온보딩 플로우
+            navigation.navigate('InterestSelect', { userEmail: email });
+          }
+        },
+      },
+    ]);
+  };
+
   // 🟡 카카오 로그인
   const handleKakaoLogin = async () => {
     try {
@@ -35,12 +67,7 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
       const data = await res.json();
       console.log('카카오 로그인 성공:', data);
 
-      Alert.alert('로그인 성공!', `${data.name}님 환영해요!`, [
-        {
-          text: '확인',
-          onPress: () => navigation.navigate('InterestSelect', { userEmail: data.email }),
-        },
-      ]);
+      await routeAfterLogin(data.email, data.name);
     } catch (error) {
       console.error('카카오 로그인 실패:', error);
       Alert.alert('로그인 실패', '카카오 로그인에 실패했습니다.');
@@ -65,12 +92,7 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
       const data = JSON.parse(text);
       console.log('구글 로그인 성공:', data);
 
-      Alert.alert('로그인 성공!', `${data.name}님 환영해요!`, [
-        {
-          text: '확인',
-          onPress: () => navigation.navigate('InterestSelect', { userEmail: data.email }),
-        },
-      ]);
+      await routeAfterLogin(data.email, data.name);
     } catch (error) {
       console.error('구글 로그인 실패:', error);
       Alert.alert('로그인 실패', '구글 로그인에 실패했습니다.');

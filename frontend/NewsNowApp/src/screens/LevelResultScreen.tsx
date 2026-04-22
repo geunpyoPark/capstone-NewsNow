@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
+import { markOnboarded } from '../utils/onboarding';
 
 type Props = {
   navigation: any;
@@ -18,7 +19,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH * 0.95;
 const BUTTON_WIDTH = SCREEN_WIDTH * 0.86;
 
-const BACKEND_URL = 'http://192.168.35.3:8000';
+const BACKEND_URL = 'http://192.168.0.124:8000';
 
 const getLevel = (score: number) => {
   if (score <= 3) return 1;
@@ -114,10 +115,27 @@ export default function LevelResultScreen({ navigation, route }: Props) {
       <View style={styles.bottomArea}>
         <TouchableOpacity
           style={styles.retryButton}
-          onPress={() => navigation.popToTop()}
+          onPress={async () => {
+            // 온보딩(관심 카테고리 + 초기 퀴즈) 완료 기록
+            // → 다음 로그인 시 LoginScreen에서 getOnboarded로 확인해서 퀴즈 스킵
+            try {
+              await markOnboarded(userEmail, selectedCategories);
+            } catch (e) {
+              console.warn('markOnboarded 실패:', e);
+            }
+            navigation.reset({
+              index: 0,
+              routes: [
+                {
+                  name: 'Main',
+                  params: { selectedCategories, userEmail },
+                },
+              ],
+            });
+          }}
           activeOpacity={0.85}
         >
-          <Text style={styles.retryButtonText}>처음으로 돌아가기</Text>
+          <Text style={styles.retryButtonText}>뉴픽 시작하기</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
