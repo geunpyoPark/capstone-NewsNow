@@ -5,6 +5,7 @@ psycopg2-binary
 google-generativeai
 google-auth
 requests
+httpx
 pydantic
 python-jose[cryptography]
 passlib[bcrypt]
