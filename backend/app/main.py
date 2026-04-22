@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware  
-from app.routes import ai, auth, quiz
+from app.routes import auth, quiz
 
 app = FastAPI()
 
@@ -20,4 +20,3 @@ def root():
 
 app.include_router(auth.router)
 app.include_router(quiz.router)
-app.include_router(ai.router)
