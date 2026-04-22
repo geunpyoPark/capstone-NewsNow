@@ -47,6 +47,9 @@ export interface FourCutItem {
   panels: FourCutPanel[];
   views: number;
   time: string;
+  // Cloudinary(또는 외부 CDN)에서 불러올 2048×2048 네컷 이미지 URL
+  // 비어 있으면 로컬 데모 이미지(assets/images/fourcut_demo.png)로 폴백
+  imageUrl?: string;
 }
 
 export interface ScrapFolder {
@@ -59,12 +62,12 @@ export interface ScrapFolder {
 
 export const CATEGORIES: Category[] = [
   { key: 'politics', name: '정치', color: '#FF4757', emoji: '🏛️' },
-  { key: 'economy', name: '경제', color: '#5B5BF8', emoji: '💰' },
+  { key: 'economy', name: '경제', color: '#5D7CE9', emoji: '💰' },
   { key: 'society', name: '사회', color: '#FFA502', emoji: '🏙️' },
   { key: 'culture', name: '문화', color: '#A259FF', emoji: '🎭' },
   { key: 'sports', name: '스포츠', color: '#2ECC71', emoji: '⚽' },
   { key: 'it', name: 'IT/과학', color: '#00C2D1', emoji: '🔬' },
-  { key: 'world', name: '세계', color: '#3742FA', emoji: '🌍' },
+  { key: 'world', name: '세계', color: '#5D7CE9', emoji: '🌍' },
   { key: 'entertainment', name: '연예', color: '#FF6B9D', emoji: '🎬' },
 ];
 
@@ -88,7 +91,7 @@ export const NEWS_DATA: NewsItem[] = [
     views: 15234,
     time: '3시간 전',
     level: '중',
-    color: '#5B5BF8',
+    color: '#5D7CE9',
   },
   {
     id: 'n2',
@@ -148,7 +151,7 @@ export const NEWS_DATA: NewsItem[] = [
     views: 21043,
     time: '1시간 전',
     level: '상',
-    color: '#5B5BF8',
+    color: '#5D7CE9',
   },
   {
     id: 'n6',
@@ -208,7 +211,7 @@ export const NEWS_DATA: NewsItem[] = [
     views: 9821,
     time: '8시간 전',
     level: '하',
-    color: '#5B5BF8',
+    color: '#5D7CE9',
   },
   {
     id: 'n10',

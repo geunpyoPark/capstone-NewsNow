@@ -34,6 +34,7 @@ function formatViews(n: number) {
 export default function HomeScreen({ navigation }: Props) {
   const {
     userEmail,
+    userName,
     selectedCategories,
     readIds,
     getCurrentWeekReadDays,
@@ -57,12 +58,13 @@ export default function HomeScreen({ navigation }: Props) {
     ]);
   };
 
-  // 사용자 표시명 (이메일에서 @ 앞만)
+  // 사용자 표시명 우선순위: userName → 이메일 앞부분 → '뉴픽 독자'
   const displayName = useMemo(() => {
+    if (userName && userName.trim()) return userName.trim();
     if (!userEmail) return '뉴픽 독자';
     const at = userEmail.indexOf('@');
     return at > 0 ? userEmail.slice(0, at) : userEmail;
-  }, [userEmail]);
+  }, [userName, userEmail]);
 
   // 추천 뉴스: 관심 카테고리 기준 최대 4개. 부족하면 전체에서 채움.
   const recommended = useMemo(() => {

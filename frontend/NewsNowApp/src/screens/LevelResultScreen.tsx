@@ -39,7 +39,7 @@ const getLevelDescription = (level: number) => {
 };
 
 export default function LevelResultScreen({ navigation, route }: Props) {
-  const { selectedCategories, categoryScores, userEmail } = route.params;
+  const { selectedCategories, categoryScores, userEmail, userName } = route.params;
 
   const categoryResults = selectedCategories.map((category: string) => {
     const score = categoryScores[category] ?? 0;
@@ -118,8 +118,9 @@ export default function LevelResultScreen({ navigation, route }: Props) {
           onPress={async () => {
             // 온보딩(관심 카테고리 + 초기 퀴즈) 완료 기록
             // → 다음 로그인 시 LoginScreen에서 getOnboarded로 확인해서 퀴즈 스킵
+            // 이름도 함께 저장해서 재로그인 때 홈에서 바로 표시 가능하도록 함.
             try {
-              await markOnboarded(userEmail, selectedCategories);
+              await markOnboarded(userEmail, selectedCategories, userName);
             } catch (e) {
               console.warn('markOnboarded 실패:', e);
             }
@@ -128,7 +129,7 @@ export default function LevelResultScreen({ navigation, route }: Props) {
               routes: [
                 {
                   name: 'Main',
-                  params: { selectedCategories, userEmail },
+                  params: { selectedCategories, userEmail, userName },
                 },
               ],
             });

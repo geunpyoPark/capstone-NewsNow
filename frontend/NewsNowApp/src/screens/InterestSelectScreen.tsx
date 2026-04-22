@@ -22,7 +22,7 @@ type Props = {
 };
 
 export default function InterestSelectScreen({ navigation, route }: Props) {
-  const { userEmail } = route.params;
+  const { userEmail, userName } = route.params;
   const [selected, setSelected] = useState<string[]>([]);
 
   const handleSelect = (item: string) => {
@@ -48,6 +48,7 @@ export default function InterestSelectScreen({ navigation, route }: Props) {
       currentCategoryIndex: 0,
       categoryScores: {},
       userEmail, // 이메일 넘기기
+      userName,  // 이름도 함께 전달 (홈에서 표시용)
     });
   };
 
