@@ -19,7 +19,8 @@ GoogleSignin.configure({
   webClientId: '901962887380-7pvrduri2p8ph9es2fq7vtch3fcpc0lg.apps.googleusercontent.com',
 });
 
-const BACKEND_URL = 'http://192.168.0.124:8000';
+const BACKEND_URL = 'http://192.168.35.87:8000';
+
 
 export default function LoginScreen({ navigation }: { navigation: any }) {
   // 로그인 성공 후 분기: 이 이메일이 이미 온보딩을 마쳤으면 Main으로,

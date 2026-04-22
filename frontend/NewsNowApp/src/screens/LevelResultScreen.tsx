@@ -19,7 +19,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH * 0.95;
 const BUTTON_WIDTH = SCREEN_WIDTH * 0.86;
 
-const BACKEND_URL = 'http://192.168.0.124:8000';
+const BACKEND_URL = 'http://192.168.35.87:8000';
 
 const getLevel = (score: number) => {
   if (score <= 3) return 1;
