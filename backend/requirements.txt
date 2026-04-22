@@ -1,1 +1,10 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+psycopg2-binary
+google-generativeai
 google-auth
+requests
+pydantic
+python-jose[cryptography]
+passlib[bcrypt]
