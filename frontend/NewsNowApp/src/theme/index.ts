@@ -5,9 +5,9 @@ export type Level = '하' | '중' | '상';
 
 export const colors = {
   // Brand
-  primary: '#5B5BF8',
+  primary: '#5D7CE9',
   primaryLight: '#EEEEFF',
-  primaryDark: '#4848E0',
+  primaryDark: '#5D7CE9',
 
   // Accents
   accentRed: '#FF4757',
@@ -16,12 +16,12 @@ export const colors = {
 
   // Categories (카테고리 컬러)
   catPolitics: '#FF4757',     // 정치
-  catEconomy: '#5B5BF8',      // 경제
+  catEconomy: '#5D7CE9',      // 경제
   catSociety: '#FFA502',      // 사회
   catCulture: '#A259FF',      // 문화
   catSports: '#2ECC71',       // 스포츠
   catIT: '#00C2D1',           // IT/과학
-  catWorld: '#3742FA',        // 세계
+  catWorld: '#5D7CE9',        // 세계
   catEntertainment: '#FF6B9D',// 연예
 
   // Neutrals
@@ -43,7 +43,7 @@ export const colors = {
 
   // Level (하/중/상)
   levelLow: '#9CA3AF',
-  levelMid: '#5B5BF8',
+  levelMid: '#5D7CE9',
   levelHigh: '#FF4757',
 };
 

@@ -23,6 +23,7 @@ export const FONT_SCALE_LABEL: Record<FontScale, string> = {
 type AppState = {
   ready: boolean;
   userEmail: string | null;
+  userName: string | null;
   selectedCategories: string[];
   readIds: string[];
   scrappedIds: string[];
@@ -38,6 +39,7 @@ type AppState = {
 
 type AppContextValue = AppState & {
   setUserEmail: (email: string | null) => void;
+  setUserName: (name: string | null) => void;
   setSelectedCategories: (cats: string[]) => void;
   markRead: (newsId: string) => void;
   toggleScrap: (newsId: string) => void;
@@ -54,6 +56,7 @@ type AppContextValue = AppState & {
 const defaultState: AppState = {
   ready: false,
   userEmail: null,
+  userName: null,
   selectedCategories: [],
   readIds: [],
   scrappedIds: [],
@@ -112,6 +115,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const setUserEmail = useCallback((email: string | null) => {
     setState(s => ({ ...s, userEmail: email }));
+  }, []);
+
+  const setUserName = useCallback((name: string | null) => {
+    setState(s => ({ ...s, userName: name }));
   }, []);
 
   const setSelectedCategories = useCallback((cats: string[]) => {
@@ -207,6 +214,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const value: AppContextValue = {
     ...state,
     setUserEmail,
+    setUserName,
     setSelectedCategories,
     markRead,
     toggleScrap,

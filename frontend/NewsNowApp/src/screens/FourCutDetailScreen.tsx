@@ -65,7 +65,12 @@ export default function FourCutDetailScreen({ navigation, route }: Props) {
       <View style={styles.frameWrap}>
         <View style={[styles.frame, { width: frameSize, height: frameSize }]}>
           <Image
-            source={require('../assets/images/fourcut_demo.png')}
+            // Cloudinary URL이 있으면 원격, 없으면 로컬 데모 이미지 사용
+            source={
+              item.imageUrl
+                ? { uri: item.imageUrl }
+                : require('../assets/images/fourcut_demo.png')
+            }
             style={{
               width: frameSize * 2,
               height: frameSize * 2,

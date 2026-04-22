@@ -10,8 +10,9 @@ import {
   Alert,
 } from 'react-native';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import { login as kakaoLogin } from '@react-native-kakao/user';
+import { login as kakaoLogin, me as kakaoMe } from '@react-native-kakao/user';
 import { getOnboarded } from '../utils/onboarding';
+import { useAppContext } from '../context/AppContext';
 
 GoogleSignin.configure({
   iosClientId:
@@ -22,11 +23,20 @@ GoogleSignin.configure({
 const BACKEND_URL = 'http://192.168.0.124:8000';
 
 export default function LoginScreen({ navigation }: { navigation: any }) {
+  const { setUserEmail, setUserName } = useAppContext();
+
   // 로그인 성공 후 분기: 이 이메일이 이미 온보딩을 마쳤으면 Main으로,
   // 처음이면 InterestSelect(관심 카테고리 선택 + 초기 퀴즈)로.
-  const routeAfterLogin = async (email: string, name?: string) => {
+  const routeAfterLogin = async (email: string, name?: string | null) => {
     const onboarded = await getOnboarded(email);
-    Alert.alert('로그인 성공!', `${name ?? email}님 환영해요!`, [
+    // 이번 로그인에 이름이 없으면(이미 온보딩된 계정의 경우) 이전에 저장된 이름 사용
+    const finalName = name ?? onboarded?.userName ?? null;
+
+    // AppContext에 즉시 반영 → 홈 등 하위 화면에서 바로 사용 가능
+    setUserEmail(email);
+    setUserName(finalName);
+
+    Alert.alert('로그인 성공!', `${finalName ?? email}님 환영해요!`, [
       {
         text: '확인',
         onPress: () => {
@@ -39,6 +49,7 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
                   name: 'Main',
                   params: {
                     userEmail: email,
+                    userName: finalName,
                     selectedCategories: onboarded.selectedCategories,
                   },
                 },
@@ -46,7 +57,10 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
             });
           } else {
             // 첫 로그인 → 기존 온보딩 플로우
-            navigation.navigate('InterestSelect', { userEmail: email });
+            navigation.navigate('InterestSelect', {
+              userEmail: email,
+              userName: finalName,
+            });
           }
         },
       },
@@ -58,6 +72,26 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
     try {
       const token = await kakaoLogin();
 
+      // 카카오 프로필에서 닉네임과 실제 이메일을 직접 가져온다.
+      // (백엔드가 Kakao 숫자 ID를 email 필드로 내려주는 경우 대비)
+      let kakaoNickname: string | null = null;
+      let kakaoEmail: string | null = null;
+      try {
+        const profile: any = await kakaoMe();
+        kakaoNickname =
+          profile?.nickname ??
+          profile?.profile?.nickname ??
+          profile?.kakaoAccount?.profile?.nickname ??
+          null;
+        kakaoEmail =
+          profile?.email ??
+          profile?.kakaoAccount?.email ??
+          null;
+        console.log('카카오 프로필:', { kakaoNickname, kakaoEmail });
+      } catch (e) {
+        console.warn('카카오 프로필 조회 실패:', e);
+      }
+
       const res = await fetch(`${BACKEND_URL}/auth/kakao`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -67,7 +101,14 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
       const data = await res.json();
       console.log('카카오 로그인 성공:', data);
 
-      await routeAfterLogin(data.email, data.name);
+      // 우선순위: 카카오 실제 이메일 → 백엔드 email → null
+      const displayEmail = kakaoEmail ?? data.email ?? null;
+      const displayName = kakaoNickname ?? data.name ?? null;
+      if (!displayEmail) {
+        Alert.alert('로그인 실패', '카카오 이메일 정보를 가져올 수 없어요.');
+        return;
+      }
+      await routeAfterLogin(displayEmail, displayName);
     } catch (error) {
       console.error('카카오 로그인 실패:', error);
       Alert.alert('로그인 실패', '카카오 로그인에 실패했습니다.');
@@ -82,6 +123,12 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
       const token = userInfo.data?.idToken;
       if (!token) throw new Error('토큰 없음');
 
+      // 구글 프로필에서 표시 이름 직접 획득
+      const googleName =
+        userInfo.data?.user?.name ??
+        userInfo.data?.user?.givenName ??
+        null;
+
       const res = await fetch(`${BACKEND_URL}/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -92,7 +139,9 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
       const data = JSON.parse(text);
       console.log('구글 로그인 성공:', data);
 
-      await routeAfterLogin(data.email, data.name);
+      // 우선순위: 구글 프로필 name → 백엔드 name → null
+      const displayName = googleName ?? data.name ?? null;
+      await routeAfterLogin(data.email, displayName);
     } catch (error) {
       console.error('구글 로그인 실패:', error);
       Alert.alert('로그인 실패', '구글 로그인에 실패했습니다.');
@@ -156,7 +205,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
   topArea: { flex: 3, justifyContent: 'center', alignItems: 'center' },
   logoImage: { width: 200, height: 200, marginBottom: 40 },
-  welcomeText: { fontSize: 20, color: '#6086E0', textAlign: 'center', fontWeight: '600' },
+  welcomeText: { fontSize: 20, color: '#5D7CE9', textAlign: 'center', fontWeight: '600' },
   bottomArea: { flex: 1, justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 60 },
   dividerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, width: '80%' },
   dividerLine: { flex: 1, height: 1, backgroundColor: '#E5E5E5' },

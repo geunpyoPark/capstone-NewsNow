@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Image, StyleSheet, ImageSourcePropType } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { colors } from '../theme';
 
@@ -10,11 +10,28 @@ import MyPageScreen from '../screens/MyPageScreen';
 
 const Tab = createBottomTabNavigator();
 
-// 간단한 이모지 기반 탭 아이콘 (의존성 추가 없이)
-function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
+// 이미지 에셋 기반 탭 아이콘
+// tintColor로 포커스 여부에 따라 색상 자동 반영
+function TabIcon({
+  source,
+  focused,
+}: {
+  source: ImageSourcePropType;
+  focused: boolean;
+}) {
   return (
     <View style={styles.iconWrap}>
-      <Text style={[styles.icon, { opacity: focused ? 1 : 0.5 }]}>{emoji}</Text>
+      <Image
+        source={source}
+        resizeMode="contain"
+        style={[
+          styles.icon,
+          {
+            tintColor: focused ? colors.primary : colors.textSecondary,
+            opacity: focused ? 1 : 0.7,
+          },
+        ]}
+      />
     </View>
   );
 }
@@ -35,7 +52,12 @@ export default function MainTabs() {
         component={HomeScreen}
         options={{
           tabBarLabel: '홈',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🏠" focused={focused} />,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              source={require('../assets/images/home.png')}
+              focused={focused}
+            />
+          ),
         }}
       />
       <Tab.Screen
@@ -43,7 +65,12 @@ export default function MainTabs() {
         component={NewsListScreen}
         options={{
           tabBarLabel: '뉴스목록',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="📰" focused={focused} />,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              source={require('../assets/images/news_list.png')}
+              focused={focused}
+            />
+          ),
         }}
       />
       <Tab.Screen
@@ -51,7 +78,12 @@ export default function MainTabs() {
         component={FourCutScreen}
         options={{
           tabBarLabel: '네컷뉴스',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🖼️" focused={focused} />,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              source={require('../assets/images/news_cartoon.png')}
+              focused={focused}
+            />
+          ),
         }}
       />
       <Tab.Screen
@@ -59,7 +91,12 @@ export default function MainTabs() {
         component={MyPageScreen}
         options={{
           tabBarLabel: '마이',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="👤" focused={focused} />,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              source={require('../assets/images/my_page.png')}
+              focused={focused}
+            />
+          ),
         }}
       />
     </Tab.Navigator>
@@ -84,6 +121,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   icon: {
-    fontSize: 20,
+    width: 24,
+    height: 24,
   },
 });
