@@ -11,9 +11,6 @@ AI_DIR = PROJECT_ROOT / "AI"
 if str(AI_DIR) not in sys.path:
     sys.path.insert(0, str(AI_DIR))
 
-from main_pipeline import generate_news_comic_result
-
-
 router = APIRouter(prefix="/ai", tags=["ai"])
 
 
@@ -27,6 +24,7 @@ class ComicGenerateRequest(BaseModel):
 @router.post("/generate-comic")
 def generate_comic(payload: ComicGenerateRequest):
     try:
+        from main_pipeline import generate_news_comic_result
         return generate_news_comic_result(
             title=payload.title,
             body=payload.body,
