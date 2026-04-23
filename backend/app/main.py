@@ -1,8 +1,21 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware  
 from app.routes import auth, quiz
+from app.database import engine, Base
+from app.models.user import User
+from app.models.quiz_result import QuizResult
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 # ✅ CORS 미들웨어 설정 추가
 # 이 설정이 있어야 프론트엔드(React Native)에서 보낸 요청을 백엔드가 허락해줍니다.
