@@ -7,9 +7,10 @@ type Props = {
   cat: string;
   xp: number;
   compact?: boolean;
+  hideCatLabel?: boolean;
 };
 
-export default function XPBar({ cat, xp, compact }: Props) {
+export default function XPBar({ cat, xp, compact, hideCatLabel }: Props) {
   const color = categoryColor(cat);
   const level = xpToLevel(xp);
   // 다음 레벨까지 남은 XP
@@ -20,7 +21,7 @@ export default function XPBar({ cat, xp, compact }: Props) {
   return (
     <View style={[styles.wrap, compact && styles.wrapCompact]}>
       <View style={styles.head}>
-        <Text style={styles.cat}>{cat}</Text>
+        {hideCatLabel ? <View /> : <Text style={styles.cat}>{cat}</Text>}
         <Text style={styles.xp}>
           {xp >= 200 ? '최고 레벨' : `${current} / ${nextTarget} XP`}
         </Text>

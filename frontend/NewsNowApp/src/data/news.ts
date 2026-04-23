@@ -511,9 +511,10 @@ export const FOURCUT_ALL: FourCutItem[] = [
 ];
 
 export const SCRAP_FOLDERS: ScrapFolder[] = [
-  { id: 'f_economy', name: '경제 읽기', emoji: '💰', categories: ['경제'] },
-  { id: 'f_tech', name: 'IT 트렌드', emoji: '🔬', categories: ['IT/과학'] },
-  { id: 'f_politics', name: '시사 정리', emoji: '🏛️', categories: ['정치', '사회'] },
+  { id: 'f_economy', name: '경제', emoji: '💰', categories: ['경제'] },
+  { id: 'f_tech', name: 'IT/과학', emoji: '🔬', categories: ['IT/과학'] },
+  { id: 'f_politics', name: '정치', emoji: '🏛️', categories: ['정치'] },
+  { id: 'f_social', name: '사회', emoji: '👫', categories: ['사회'] },
 ];
 
 // 레벨별 XP 규칙
