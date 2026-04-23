@@ -19,8 +19,6 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH * 0.95;
 const BUTTON_WIDTH = SCREEN_WIDTH * 0.86;
 
-const BACKEND_URL = 'http://192.168.0.124:8000';
-
 const getLevel = (score: number) => {
   if (score <= 3) return 1;
   if (score <= 6) return 2;
@@ -68,7 +66,7 @@ export default function LevelResultScreen({ navigation, route }: Props) {
           overall_level: overallLevel,
         };
         console.log('보내는 데이터:', JSON.stringify(body));
-        const res = await fetch(`${BACKEND_URL}/quiz/result`, {
+        const res = await fetch(`${API_BASE_URL}/quiz/result`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
@@ -163,3 +161,4 @@ const styles = StyleSheet.create({
   retryButton: { backgroundColor: '#5D7CE9', minHeight: 58, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   retryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
 });
+import { API_BASE_URL } from '../config/api';

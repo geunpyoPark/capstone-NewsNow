@@ -117,6 +117,4 @@ dependencies {
         implementation jscFlavor
     }
 
-    // 카카오 SDK
-    implementation "com.kakao.sdk:v2-user:2.20.1"
 }
