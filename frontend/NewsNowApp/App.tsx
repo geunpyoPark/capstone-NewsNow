@@ -1,6 +1,7 @@
-import React from 'react';
+import React, {useEffect} from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { initializeKakaoSDK } from '@react-native-kakao/core';
 
 import LoginScreen from './src/screens/LoginScreen';
 import InterestSelectScreen from './src/screens/InterestSelectScreen';
@@ -17,6 +18,12 @@ import { AppProvider } from './src/context/AppContext';
 const Stack = createNativeStackNavigator();
 
 export default function App() {
+  useEffect(() => {
+    initializeKakaoSDK('6318cc7d05835c4758ac2f34b72b5e15').catch(error => {
+      console.warn('Failed to initialize Kakao SDK', error);
+    });
+  }, []);
+
   return (
     <AppProvider>
       <NavigationContainer>

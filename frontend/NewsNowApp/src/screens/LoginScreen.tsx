@@ -13,14 +13,13 @@ import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { login as kakaoLogin, me as kakaoMe } from '@react-native-kakao/user';
 import { getOnboarded } from '../utils/onboarding';
 import { useAppContext } from '../context/AppContext';
+import { API_BASE_URL } from '../config/api';
 
 GoogleSignin.configure({
   iosClientId:
     '901962887380-89qlr9pk1snulfok0cu45dpaleal5b5k.apps.googleusercontent.com',
   webClientId: '901962887380-7pvrduri2p8ph9es2fq7vtch3fcpc0lg.apps.googleusercontent.com',
 });
-
-const BACKEND_URL = 'http://192.168.0.124:8000';
 
 export default function LoginScreen({ navigation }: { navigation: any }) {
   const { setUserEmail, setUserName } = useAppContext();
@@ -92,13 +91,23 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
         console.warn('카카오 프로필 조회 실패:', e);
       }
 
-      const res = await fetch(`${BACKEND_URL}/auth/kakao`, {
+      const res = await fetch(`${API_BASE_URL}/auth/kakao`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: token.accessToken }),
       });
 
-      const data = await res.json();
+      const raw = await res.text();
+      if (!res.ok) {
+        throw new Error(`Kakao auth failed (${res.status}): ${raw}`);
+      }
+
+      let data: any;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        throw new Error(`Kakao auth returned non-JSON response: ${raw}`);
+      }
       console.log('카카오 로그인 성공:', data);
 
       // 우선순위: 카카오 실제 이메일 → 백엔드 email → null
@@ -129,14 +138,23 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
         userInfo.data?.user?.givenName ??
         null;
 
-      const res = await fetch(`${BACKEND_URL}/auth/google`, {
+      const res = await fetch(`${API_BASE_URL}/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token }),
       });
 
       const text = await res.text();
-      const data = JSON.parse(text);
+      if (!res.ok) {
+        throw new Error(`Google auth failed (${res.status}): ${text}`);
+      }
+
+      let data: any;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(`Google auth returned non-JSON response: ${text}`);
+      }
       console.log('구글 로그인 성공:', data);
 
       // 우선순위: 구글 프로필 name → 백엔드 name → null
