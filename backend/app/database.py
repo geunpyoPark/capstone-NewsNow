@@ -5,9 +5,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL").replace(
-    "postgresql://", "postgresql+asyncpg://"
-)
+raw_database_url = os.getenv("DATABASE_URL")
+if not raw_database_url:
+    raise RuntimeError(
+        "DATABASE_URL is not set. Add it to your backend .env before starting the server."
+    )
+
+DATABASE_URL = raw_database_url.replace("postgresql://", "postgresql+asyncpg://")
 
 engine = create_async_engine(DATABASE_URL, echo=True)
 

@@ -21,6 +21,7 @@ type Props = {
 export default function MyPageScreen({ navigation }: Props) {
   const {
     userEmail,
+    userName,
     selectedCategories,
     readIds,
     scrappedIds,
@@ -45,6 +46,13 @@ export default function MyPageScreen({ navigation }: Props) {
   }, [scrappedIds]);
 
   const visibleCategories = selectedCategories.length ? selectedCategories : MAIN_CATEGORIES;
+
+  const displayName = useMemo(() => {
+    if (userName && userName.trim()) return userName.trim();
+    if (!userEmail) return '뉴픽 독자';
+    const at = userEmail.indexOf('@');
+    return at > 0 ? userEmail.slice(0, at) : userEmail;
+  }, [userName, userEmail]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -71,10 +79,10 @@ export default function MyPageScreen({ navigation }: Props) {
         <View style={styles.profile}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
-              {(userEmail ?? '뉴픽')[0].toUpperCase()}
+              {displayName[0]?.toUpperCase() ?? '뉴'}
             </Text>
           </View>
-          <Text style={styles.name}>{userEmail ?? '뉴픽 독자'}</Text>
+          <Text style={styles.name}>{displayName}</Text>
           <Text style={styles.sub}>
             {selectedCategories.length
               ? `관심: ${selectedCategories.join(' · ')}`
@@ -113,7 +121,7 @@ export default function MyPageScreen({ navigation }: Props) {
                   </View>
                   <LevelBadge level={level} />
                 </View>
-                <XPBar cat={cat} xp={xp} compact />
+                <XPBar cat={cat} xp={xp} compact hideCatLabel />
               </View>
             );
           })}

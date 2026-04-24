@@ -10,11 +10,12 @@ type Props = {
 };
 
 export default function MainEntry({ route }: Props) {
-  const { setUserEmail, setSelectedCategories } = useAppContext();
+  const { setUserEmail, setUserName, setSelectedCategories } = useAppContext();
 
   useEffect(() => {
     const params = route?.params ?? {};
     if (params.userEmail) setUserEmail(params.userEmail);
+    if (typeof params.userName === 'string') setUserName(params.userName);
     if (Array.isArray(params.selectedCategories) && params.selectedCategories.length > 0) {
       setSelectedCategories(params.selectedCategories);
     }

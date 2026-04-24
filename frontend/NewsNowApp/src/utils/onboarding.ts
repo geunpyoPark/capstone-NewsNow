@@ -7,6 +7,7 @@ const STORAGE_KEY = '@newspick/onboarded/v1';
 type OnboardedRecord = {
   selectedCategories: string[];
   completedAt: number; // epoch ms
+  userName?: string | null;
 };
 
 type OnboardedMap = Record<string, OnboardedRecord>;
@@ -38,13 +39,28 @@ export async function getOnboarded(email: string | null | undefined): Promise<On
 }
 
 /** 온보딩 완료 기록 */
-export async function markOnboarded(email: string, selectedCategories: string[]): Promise<void> {
+export async function markOnboarded(
+  email: string,
+  selectedCategories: string[],
+  userName?: string | null,
+): Promise<void> {
   if (!email) return;
   const map = await readMap();
   map[email] = {
     selectedCategories,
     completedAt: Date.now(),
+    userName: userName ?? map[email]?.userName ?? null,
   };
+  await writeMap(map);
+}
+
+/** 이메일에 매핑된 이름만 따로 갱신 (온보딩 완료 전에도 쓸 수 있게) */
+export async function saveUserName(email: string, userName: string | null): Promise<void> {
+  if (!email) return;
+  const map = await readMap();
+  const prev = map[email];
+  if (!prev) return; // 온보딩 기록이 없으면 생성하지 않음
+  map[email] = { ...prev, userName: userName ?? null };
   await writeMap(map);
 }
 

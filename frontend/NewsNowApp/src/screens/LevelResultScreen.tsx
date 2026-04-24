@@ -19,8 +19,11 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH * 0.95;
 const BUTTON_WIDTH = SCREEN_WIDTH * 0.86;
 
+<<<<<<< HEAD
 const BACKEND_URL = 'http://192.168.35.87:8000';
 
+=======
+>>>>>>> 69ec28bd939bac8a7443a4efcb459d3f073656c1
 const getLevel = (score: number) => {
   if (score <= 3) return 1;
   if (score <= 6) return 2;
@@ -39,7 +42,7 @@ const getLevelDescription = (level: number) => {
 };
 
 export default function LevelResultScreen({ navigation, route }: Props) {
-  const { selectedCategories, categoryScores, userEmail } = route.params;
+  const { selectedCategories, categoryScores, userEmail, userName } = route.params;
 
   const categoryResults = selectedCategories.map((category: string) => {
     const score = categoryScores[category] ?? 0;
@@ -68,7 +71,7 @@ export default function LevelResultScreen({ navigation, route }: Props) {
           overall_level: overallLevel,
         };
         console.log('보내는 데이터:', JSON.stringify(body));
-        const res = await fetch(`${BACKEND_URL}/quiz/result`, {
+        const res = await fetch(`${API_BASE_URL}/quiz/result`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
@@ -118,8 +121,9 @@ export default function LevelResultScreen({ navigation, route }: Props) {
           onPress={async () => {
             // 온보딩(관심 카테고리 + 초기 퀴즈) 완료 기록
             // → 다음 로그인 시 LoginScreen에서 getOnboarded로 확인해서 퀴즈 스킵
+            // 이름도 함께 저장해서 재로그인 때 홈에서 바로 표시 가능하도록 함.
             try {
-              await markOnboarded(userEmail, selectedCategories);
+              await markOnboarded(userEmail, selectedCategories, userName);
             } catch (e) {
               console.warn('markOnboarded 실패:', e);
             }
@@ -128,7 +132,7 @@ export default function LevelResultScreen({ navigation, route }: Props) {
               routes: [
                 {
                   name: 'Main',
-                  params: { selectedCategories, userEmail },
+                  params: { selectedCategories, userEmail, userName },
                 },
               ],
             });
@@ -162,3 +166,4 @@ const styles = StyleSheet.create({
   retryButton: { backgroundColor: '#5D7CE9', minHeight: 58, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   retryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
 });
+import { API_BASE_URL } from '../config/api';
