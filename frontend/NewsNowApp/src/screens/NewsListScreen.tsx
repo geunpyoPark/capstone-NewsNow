@@ -33,20 +33,22 @@ export default function NewsListScreen({ navigation }: Props) {
         <Text style={styles.subtitle}>난이도별 색깔로 한눈에 확인해 보세요</Text>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterRow}
-      >
-        {CAT_FILTERS.map(f => (
-          <CategoryPill
-            key={f}
-            label={f}
-            active={filter === f}
-            onPress={() => setFilter(f)}
-          />
-        ))}
-      </ScrollView>
+      <View style={styles.filterWrap}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterRow}
+        >
+          {CAT_FILTERS.map(f => (
+            <CategoryPill
+              key={f}
+              label={f}
+              active={filter === f}
+              onPress={() => setFilter(f)}
+            />
+          ))}
+        </ScrollView>
+      </View>
 
       <FlatList
         data={filtered}
@@ -76,9 +78,13 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 10 },
   title: { fontSize: 22, fontWeight: '700', color: colors.textPrimary },
   subtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },
+  filterWrap: {
+    height: 72,
+    justifyContent: 'center',
+  },
   filterRow: {
     paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingVertical: 0,
     alignItems: 'center',
   },
   list: { paddingHorizontal: 20, paddingBottom: 40 },

@@ -137,11 +137,17 @@ export default function HomeScreen({ navigation }: Props) {
             <Text style={styles.fontBtnSmall}>가</Text>
             <Text style={styles.fontBtnLarge}>가</Text>
           </TouchableOpacity>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {displayName[0]?.toUpperCase() ?? '🙂'}
-            </Text>
-          </View>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('MyPage')}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {displayName[0]?.toUpperCase() ?? '🙂'}
+              </Text>
+            </View>
+          </TouchableOpacity>
         </View>
       </View>
 
