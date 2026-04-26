@@ -56,6 +56,7 @@ export interface ScrapFolder {
   id: string;
   name: string;
   emoji: string;
+  kind?: 'news' | 'word';
   // 이 폴더에 속하는 카테고리들. 뉴스의 cat이 여기 하나라도 포함되면 이 폴더에 속함.
   categories: string[];
 }
@@ -515,6 +516,7 @@ export const SCRAP_FOLDERS: ScrapFolder[] = [
   { id: 'f_tech', name: 'IT/과학', emoji: '🔬', categories: ['IT/과학'] },
   { id: 'f_politics', name: '정치', emoji: '🏛️', categories: ['정치'] },
   { id: 'f_social', name: '사회', emoji: '👫', categories: ['사회'] },
+  { id: 'f_word', name: '단어', emoji: '📝', kind: 'word', categories: [] },
 ];
 
 // 레벨별 XP 규칙
