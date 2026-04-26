@@ -26,41 +26,41 @@ type QuizItem = {
 
 const quizData: Record<string, QuizItem[]> = {
   정치: [
-    { question: '나라를 운영하는 활동을 무엇이라고 할까?', options: ['정치', '요리', '운동', '게임'], answer: 0, difficulty: '하', score: 1 },
-    { question: '대표를 뽑는 제도는?', options: ['선거', '시험', '면접', '추첨'], answer: 0, difficulty: '하', score: 1 },
-    { question: '법을 만드는 곳은?', options: ['국회', '학교', '은행', '병원'], answer: 0, difficulty: '중', score: 2 },
-    { question: '정당은 무엇일까?', options: ['정치 모임', '운동 팀', '회사', '방송국'], answer: 0, difficulty: '중', score: 2 },
-    { question: '국민이 나라의 주인인 제도는?', options: ['민주주의', '독재', '귀족제', '왕정'], answer: 0, difficulty: '상', score: 3 },
-    { question: '대통령의 역할과 가장 가까운 것은?', options: ['국가 운영', '수업', '경기', '배달'], answer: 0, difficulty: '상', score: 3 },
+    { question: '대한민국의 국가 원수는 누구인가?', options: ['국무총리', '대통령', '국회의장', '대법원장'], answer: 1, difficulty: '하', score: 1 },
+    { question: '국회의원의 임기는 몇 년인가?', options: ['5년', '6년', '3년', '4년'], answer: 3, difficulty: '하', score: 1 },
+    { question: '삼권분립에서 행정권을 담당하는 기관은?', options: ['국회', '법원', '정부', '헌법재판소'], answer: 2, difficulty: '중', score: 2 },
+    { question: '대통령의 임기와 연임 가능 여부는?', options: ['4년 연임 가능', '6년 단임', '5년 연임 가능', '5년 단임'], answer: 3, difficulty: '중', score: 2 },
+    { question: '헌법재판소의 역할로 올바른 것은?', options: ['범죄자 재판', '법률의 위헌 여부 심판', '예산 심의', '법률 제정'], answer: 1, difficulty: '상', score: 3 },
+    { question: '국회에서 예산안을 심의·확정하는 헌법상 기한은?', options: ['60일 전', '15일 전', '90일 전', '회계연도 개시 30일 전'], answer: 3, difficulty: '상', score: 3 },
   ],
   경제: [
-    { question: '물건을 살 때 사용하는 것은?', options: ['돈', '돌', '종이', '연필'], answer: 0, difficulty: '하', score: 1 },
-    { question: '돈을 모아두는 것은?', options: ['저축', '소비', '낭비', '광고'], answer: 0, difficulty: '하', score: 1 },
-    { question: '은행에 돈 맡기는 것은?', options: ['예금', '삭제', '복사', '이동'], answer: 0, difficulty: '중', score: 2 },
-    { question: '회사가 물건을 만드는 이유는?', options: ['이익', '심심해서', '운동', '게임'], answer: 0, difficulty: '중', score: 2 },
-    { question: '가격이 전반적으로 오르는 현상은?', options: ['인플레이션', '할인', '저축', '환불'], answer: 0, difficulty: '상', score: 3 },
-    { question: '나라의 생산과 소비 활동은?', options: ['경제', '정치', '사회', '과학'], answer: 0, difficulty: '상', score: 3 },
+    { question: 'GDP란 무엇인가?', options: ['국제무역량', '물가지수', '국내총생산', '정부예산'], answer: 2, difficulty: '하', score: 1 },
+    { question: '금리가 오르면 대출 이자는?', options: ['내려간다', '반반이다', '변화없다', '올라간다'], answer: 3, difficulty: '하', score: 1 },
+    { question: '환율이 올라가면 수출에 어떤 영향을 미치는가?', options: ['수출 불리', '수입 감소', '영향 없음', '수출 유리'], answer: 3, difficulty: '중', score: 2 },
+    { question: '중앙은행이 기준금리를 올리는 주된 이유는?', options: ['수출 증가', '인플레이션 억제', '환율 안정', '실업률 감소'], answer: 1, difficulty: '중', score: 2 },
+    { question: '경기 침체 시 정부가 취하는 확장적 재정정책으로 올바른 것은?', options: ['세금 인상', '통화량 축소', '정부 지출 증가', '금리 인상'], answer: 2, difficulty: '상', score: 3 },
+    { question: '필립스 곡선이 나타내는 관계는?', options: ['GDP와 물가의 비례', '금리와 환율의 비례', '수출과 환율의 반비례', '인플레이션과 실업률의 반비례'], answer: 3, difficulty: '상', score: 3 },
   ],
   사회: [
-    { question: '사람들이 함께 살아가는 모습을 다루는 분야는?', options: ['사회', '수학', '미술', '체육'], answer: 0, difficulty: '하', score: 1 },
-    { question: '사람들이 서로 지켜야 하는 약속은?', options: ['규칙', '광고', '주문', '게임'], answer: 0, difficulty: '하', score: 1 },
-    { question: '도움이 필요한 사람을 함께 돕는 제도는?', options: ['복지', '투자', '예금', '광고'], answer: 0, difficulty: '중', score: 2 },
-    { question: '다른 사람의 입장을 이해하고 존중하는 태도는?', options: ['배려', '독점', '무시', '경쟁'], answer: 0, difficulty: '중', score: 2 },
-    { question: '인터넷에서 다른 사람을 존중하는 태도는?', options: ['디지털 시민의식', '속독', '암기', '체력'], answer: 0, difficulty: '상', score: 3 },
-    { question: '공동체 안에서 책임 있게 행동하는 태도와 가장 관련 깊은 것은?', options: ['시민의식', '무관심', '독점', '방관'], answer: 0, difficulty: '상', score: 3 },
+    { question: '대한민국 헌법이 보장하는 기본권이 아닌 것은?', options: ['평등권', '참정권', '재산 축적권', '자유권'], answer: 2, difficulty: '하', score: 1 },
+    { question: '다문화 사회에서 중요한 태도는?', options: ['자국 문화 우월', '문화 다양성 존중', '전통 문화 고수', '외래 문화 배척'], answer: 1, difficulty: '하', score: 1 },
+    { question: '사회적 불평등을 해소하기 위한 제도로 올바른 것은?', options: ['역진세', '비례세', '법인세', '누진세'], answer: 3, difficulty: '중', score: 2 },
+    { question: '저출산 고령화 사회의 문제점으로 가장 적절한 것은?', options: ['소비 증가', '주택 수요 증가', '생산가능인구 감소', '교육비 증가'], answer: 2, difficulty: '중', score: 2 },
+    { question: '사회 이동 중 세대 간 이동의 예로 올바른 것은?', options: ['평사원이 임원으로 승진', '부모는 농부, 자녀는 의사', '중산층이 실직으로 빈곤층', '빈민이 복권 당첨'], answer: 1, difficulty: '상', score: 3 },
+    { question: "롤스의 정의론에서 '차등의 원칙'이란?", options: ['능력에 따른 차등 분배', '필요에 따른 분배', '최소 수혜자에게 최대 이익', '모든 사람에게 동등한 분배'], answer: 2, difficulty: '상', score: 3 },
   ],
   'IT/과학': [
-    { question: '컴퓨터 프로그램을 만드는 과정을 뭐라고 할까?', options: ['코딩', '요리', '운동', '운전'], answer: 0, difficulty: '하', score: 1 },
-    { question: 'AI는 무엇의 줄임말일까?', options: ['인공지능', '자동입력', '인터넷연결', '정보저장'], answer: 0, difficulty: '하', score: 1 },
-    { question: '인터넷에 연결된 여러 기기가 정보를 주고받는 것은?', options: ['네트워크', '광합성', '저축', '투표'], answer: 0, difficulty: '중', score: 2 },
-    { question: '비밀번호를 잘 관리해야 하는 가장 큰 이유는?', options: ['개인정보 보호', '배터리 절약', '화면 밝기 조절', '앱 삭제'], answer: 0, difficulty: '중', score: 2 },
-    { question: '지구가 태양 주위를 도는 현상은?', options: ['자전', '공전', '증발', '복사'], answer: 1, difficulty: '상', score: 3 },
-    { question: '실험을 통해 사실을 확인하고 설명하는 활동과 가장 관련 깊은 것은?', options: ['과학', '광고', '패션', '응원'], answer: 0, difficulty: '상', score: 3 },
+    { question: 'CPU는 무엇의 약자인가?', options: ['중앙저장장치', '입력처리장치', '중앙처리장치', '화면출력장치'], answer: 2, difficulty: '하', score: 1 },
+    { question: '인터넷 주소를 나타내는 것은?', options: ['RAM', 'SSD', 'CPU', 'IP 주소'], answer: 3, difficulty: '하', score: 1 },
+    { question: '빅데이터 분석에서 가장 많이 활용되는 기술은?', options: ['블록체인', '머신러닝', '증강현실', '양자컴퓨팅'], answer: 1, difficulty: '중', score: 2 },
+    { question: '빛의 속도에 가장 가까운 값은?', options: ['약 3만 km/s', '약 300만 km/s', '약 30만 km/s', '약 3천 km/s'], answer: 2, difficulty: '중', score: 2 },
+    { question: '블록체인 기술의 핵심 특징으로 올바른 것은?', options: ['중앙 서버에서 관리', '익명성 보장 불가', '속도가 매우 빠름', '분산 저장으로 위변조 어려움'], answer: 3, difficulty: '상', score: 3 },
+    { question: '양자컴퓨터가 기존 컴퓨터보다 뛰어난 이유는?', options: ['전력 소비가 적음', '큐비트로 동시에 여러 상태 처리', '인터넷 속도가 빠름', '크기가 작음'], answer: 1, difficulty: '상', score: 3 },
   ],
 };
 
 export default function QuizScreen({ navigation, route }: Props) {
-  const { selectedCategories, currentCategoryIndex, categoryScores = {}, userEmail, userName } = route.params;
+  const { selectedCategories, currentCategoryIndex, categoryScores = {}, userEmail } = route.params;
 
   const currentCategory = selectedCategories[currentCategoryIndex];
   const questions = useMemo(() => quizData[currentCategory] || [], [currentCategory]);
@@ -114,8 +114,7 @@ export default function QuizScreen({ navigation, route }: Props) {
         selectedCategories,
         currentCategoryIndex: currentCategoryIndex + 1,
         categoryScores: updatedCategoryScores,
-        userEmail, // 추가!
-        userName,  // 이름도 다음 퀴즈로 전달
+        userEmail,
       });
       return;
     }
@@ -123,8 +122,7 @@ export default function QuizScreen({ navigation, route }: Props) {
     navigation.replace('LevelResult', {
       selectedCategories,
       categoryScores: updatedCategoryScores,
-      userEmail, // 추가!
-      userName,  // 이름도 결과 화면으로 전달
+      userEmail,
     });
   };
 

@@ -73,6 +73,10 @@ export default function HomeScreen({ navigation }: Props) {
     );
     return rec.length >= 2 ? rec.slice(0, 4) : NEWS_DATA.slice(0, 4);
   }, [selectedCategories]);
+  const recommendedLoop = useMemo(() => {
+    if (recommended.length <= 1) return recommended;
+    return [...recommended, recommended[0]];
+  }, [recommended]);
 
   // 오늘의 인기 뉴스: 조회수 상위 5개
   const popular = useMemo(
@@ -88,9 +92,9 @@ export default function HomeScreen({ navigation }: Props) {
     if (recommended.length <= 1) return;
     const t = setInterval(() => {
       setSlideIdx(prev => {
-        const next = (prev + 1) % recommended.length;
+        const next = prev + 1;
         slideRef.current?.scrollToIndex({ index: next, animated: true });
-        return next;
+        return next >= recommended.length ? 0 : next;
       });
     }, 3000);
     return () => clearInterval(t);
@@ -99,6 +103,13 @@ export default function HomeScreen({ navigation }: Props) {
   const handleSlideScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const x = e.nativeEvent.contentOffset.x;
     const idx = Math.round(x / SLIDE_WIDTH);
+    if (recommended.length > 1 && idx === recommended.length) {
+      setSlideIdx(0);
+      requestAnimationFrame(() => {
+        slideRef.current?.scrollToIndex({ index: 0, animated: false });
+      });
+      return;
+    }
     if (idx !== slideIdx) setSlideIdx(idx);
   };
 
@@ -198,8 +209,8 @@ export default function HomeScreen({ navigation }: Props) {
 
           <FlatList
             ref={slideRef}
-            data={recommended}
-            keyExtractor={n => n.id}
+            data={recommendedLoop}
+            keyExtractor={(n, i) => `${n.id}-${i}`}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
