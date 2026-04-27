@@ -29,8 +29,7 @@ class ArticleAsset(Base):
 
 class ComicStoryboard(Base):
     __tablename__ = "comic_storyboards"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    article_id = Column(Integer)
+    article_id = Column(Integer, primary_key=True)
     character_profile = Column(JSONB)
     style_profile = Column(JSONB)
     panels = Column(JSONB)
