@@ -421,7 +421,7 @@ def generate_news_comic_result(
     analyzer = NewsAnalyzer()
     comic_gen = comic_gen or ComicGenerator(font_path=get_default_font_path())
 
-    analysis = analyzer.analyze_and_reconstruct(body[:2500])
+    analysis = analyzer.analyze_and_reconstruct(body[:4000], title=title)
     if not (analysis and validate_analysis(analysis)):
         raise ValueError("뉴스 분석 결과가 비어 있거나 형식이 올바르지 않습니다.")
 

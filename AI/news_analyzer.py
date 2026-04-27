@@ -43,17 +43,25 @@ class NewsAnalyzer:
         reraise=True, # 최종 실패 시 RetryError 대신 실제 예외를 던짐
         before_sleep=lambda retry_state: print(f"⏳ [API 할당량 초과] {retry_state.next_action.sleep:.1f}초 후 재시도합니다... (시도 {retry_state.attempt_number}/5)")
     )
-    def analyze_and_reconstruct(self, news_text):
+    def analyze_and_reconstruct(self, news_text, title=""):
         """
         뉴스 본문을 받아 4단계 난이도로 재구성하고,
         퀴즈/하이라이트까지 한 번에 생성합니다.
         """
+        article_type = self._detect_article_type(title, news_text)
+        article_type_guide = self._build_article_type_guide(article_type)
         prompt = f"""
         너는 독해 교육 서비스 'NewsNow'의 시니어 에디터야. 
         제공된 [기사 본문]을 바탕으로 응답하되, 아래 [🚨 최종 운영 규칙]을 엄격히 준수해줘.
 
+        [기사 제목]
+        {title}
+
         [기사 본문]
         {news_text}
+
+        [기사 유형]
+        {article_type_guide}
 
         [🚨 최종 운영 규칙]
         1. **사실 강도 및 용어 통일**: 원문의 '갈등'은 모든 레벨에서 '갈등' 혹은 '어려움'으로 표현하고, 절대 '전쟁/폭탄/긴장'으로 격상하지 마. 
@@ -64,10 +72,12 @@ class NewsAnalyzer:
         6. **핵심 단어 추출 (Highlights)**: 본문에 등장하는 단어 중 사용자가 어려워할 만한 경제/시사 용어 5~7개를 추출해. 사전적 정의가 아닌, 이 기사의 [맥락]에 맞춘 아주 쉬운 풀이(툴팁용)를 제공해줘.
 
         [📊 레벨별 가이드]
-        - level_1 (입문): 4~5문장 압축. "외국 돈 값", "이자" 등 가장 쉬운 단어 사용. (가치(X) -> 값(O))
-        - level_2 (초급): 상황 설명 중심. 어려운 경제 용어는 1개 이하로 제한.
-        - level_3 (중급): 기사체 문장을 유지하되, 추상적인 한자어 나열을 피하고 '예측이 더 어려워졌다', '반복되는 위험 요인' 등으로 순화해서 서술해.
-        - level_4 (전문): '심화 재구성본'의 성격. '확인되었다' 같은 단정 대신 '분석된다', '해석된다'를 사용하고, 원문 표현을 복사하지 말고 너의 문장으로 새로 써.
+        - level_1 (입문): 5~6문장. 초등학생이 핵심 사건과 결과를 이해할 수 있게 쉬운 단어로 설명해.
+        - level_2 (초급): 6~8문장. 사건의 배경, 이유, 결과를 빠뜨리지 말고 순서대로 설명해.
+        - level_3 (중급): 8~10문장. 핵심 주장과 근거, 맥락을 균형 있게 담아라. 기사체 문장을 유지하되 추상적 한자어 나열은 피하고 풀어서 설명해.
+        - level_4 (전문): 10~12문장. 원문의 핵심 논지와 근거, 의미를 충분히 전달하는 '심화 재구성본'으로 써라. '확인되었다' 같은 단정 대신 '분석된다', '해석된다'를 사용하고, 원문 표현을 복사하지 말고 너의 문장으로 새로 써.
+        - 모든 레벨은 "핵심 사건/주장 → 왜 그런지 → 어떤 영향이 있는지 → 무엇을 기억하면 되는지" 흐름이 보이게 작성해.
+        - 특히 칼럼/사설/기고문은 원문의 문제의식, 근거 사례, 결론 또는 제언이 빠지지 않게 작성해. 단순 주장 한 줄 요약으로 끝내면 안 된다.
 
         [📝 퀴즈 구성 (어휘/맥락/요약)]
         1. vocabulary: '뉴노멀', '3고 현상' 등 대중적 핵심 키워드. (4지선다)
@@ -103,6 +113,27 @@ class NewsAnalyzer:
                 raise e # retry가 잡을 수 있게 다시 던짐
             print(f"AI 분석 중 치명적 에러 발생: {e}")
             return None
+
+    def _detect_article_type(self, title, news_text):
+        source = f"{title} {news_text[:400]}".lower()
+        opinion_markers = [
+            "[칼럼]", "칼럼", "사설", "기고", "오피니언", "시론", "논단", "기자수첩",
+        ]
+        if any(marker in source for marker in opinion_markers):
+            return "opinion"
+        return "straight"
+
+    def _build_article_type_guide(self, article_type):
+        if article_type == "opinion":
+            return (
+                "이 글은 칼럼/사설/기고 성격일 가능성이 높다. "
+                "따라서 level_2~4에서는 필자의 핵심 주장, 그 주장을 뒷받침하는 근거나 사례, "
+                "마지막 결론 또는 제언을 빠뜨리지 말고 설명해야 한다."
+            )
+        return (
+            "이 글은 일반 기사 성격일 가능성이 높다. "
+            "따라서 사건의 발생, 배경, 주요 쟁점, 결과와 영향이 균형 있게 드러나야 한다."
+        )
 
 # ==========================================
 # 실행 테스트
