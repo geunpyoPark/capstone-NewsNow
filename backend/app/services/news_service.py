@@ -2,7 +2,7 @@ from sqlalchemy import select
 from app.database import AsyncSessionLocal
 from app.models.news import NewsArticle, ArticleVersion, ArticleAsset
 
-async def get_news_list(category: str = None):
+async def get_news_list(category: str = None, level: int = 1):
     async with AsyncSessionLocal() as session:
         if category:
             result = await session.execute(
@@ -12,18 +12,26 @@ async def get_news_list(category: str = None):
             result = await session.execute(select(NewsArticle))
         
         articles = result.scalars().all()
-        return [
-            {
+        
+        news_list = []
+        for a in articles:
+            version = await session.execute(
+                select(ArticleVersion).where(ArticleVersion.article_id == a.id)
+            )
+            v = version.scalar_one_or_none()
+            
+            news_list.append({
                 "id": a.id,
                 "title": a.title,
                 "category": a.category,
                 "pub_date": a.pub_date,
-                "comic_path": a.comic_path
-            }
-            for a in articles
-        ]
+                "comic_path": a.comic_path,
+                "content": v.levels.get(f"level_{level}", "") if v else ""
+            })
+        
+        return news_list
 
-async def get_news_detail(article_id: int):
+async def get_news_detail(article_id: int, level: int = 1):
     async with AsyncSessionLocal() as session:
         article = await session.get(NewsArticle, article_id)
         
@@ -43,7 +51,7 @@ async def get_news_detail(article_id: int):
             "category": article.category,
             "pub_date": article.pub_date,
             "comic_path": article.comic_path,
-            "levels": v.levels if v else {},
+            "content": v.levels.get(f"level_{level}", "") if v else "",
             "quizzes": a.quizzes if a else [],
             "highlights": a.highlights if a else []
         }

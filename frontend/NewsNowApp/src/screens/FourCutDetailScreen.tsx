@@ -69,7 +69,7 @@ export default function FourCutDetailScreen({ navigation, route }: Props) {
             source={
               item.imageUrl
                 ? { uri: item.imageUrl }
-                : require('../assets/images/comic.png')
+                : require('../assets/images/news_cartoon.png')
             }
             style={{
               width: frameSize * 2,
