@@ -517,9 +517,13 @@ def run_news_now_pipeline(keyword, count, category):
 
                         body = crawler.extract_body(news['naver_link'])
                         if not body or len(body) < 200: continue
-                        news_with_body = {**news, "body": body}
+                        enriched_title = crawler.extract_best_title(
+                            news["original_link"] or news["naver_link"],
+                            news["title"],
+                        )
+                        news_with_body = {**news, "title": enriched_title, "body": body}
                         
-                        print(f"\n🧠 [{category}] 뉴스 분석 중: {news['title'][:25]}...")
+                        print(f"\n🧠 [{category}] 뉴스 분석 중: {news_with_body['title'][:25]}...")
                         try:
                             print(f"🎨 스토리형 4컷 뉴스 만화 제작 중...")
                             try:
@@ -532,7 +536,7 @@ def run_news_now_pipeline(keyword, count, category):
                             except Exception as e:
                                 print(f"⚠️ 이미지 생성 오류: {e}")
                                 fallback = generate_news_comic_result(
-                                    title=news["title"],
+                                    title=news_with_body["title"],
                                     body=body,
                                     category=category,
                                     comic_gen=comic_gen,
@@ -545,7 +549,7 @@ def run_news_now_pipeline(keyword, count, category):
                                     "storyboard": None,
                                     "bubble_layouts": [],
                                     "comic_path": None,
-                                    "meta": build_article_meta(news, category),
+                                    "meta": build_article_meta(news_with_body, category),
                                 }
 
                             save_news_result(conn, cur, analysis)

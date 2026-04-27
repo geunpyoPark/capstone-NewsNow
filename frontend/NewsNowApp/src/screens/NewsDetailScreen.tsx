@@ -12,6 +12,7 @@ import {
 import { colors, categoryColor } from '../theme';
 import { useAppContext, FONT_SCALE_MULTIPLIER } from '../context/AppContext';
 import LevelBadge from '../components/LevelBadge';
+import { formatNewsDate } from '../utils/date';
 
 const BASE_URL = 'https://mainrepo-production-4ca1.up.railway.app';
 
@@ -126,7 +127,7 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
         </View>
 
         <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.meta}>{item.pub_date ?? ''}</Text>
+        <Text style={styles.meta}>{formatNewsDate(item.pub_date)}</Text>
 
         <View style={styles.body}>
           <Text style={[styles.paragraph, { fontSize: 15 * fontMul, lineHeight: 24 * fontMul }]}>
