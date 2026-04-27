@@ -1,3 +1,4 @@
+from sqlalchemy import select, desc
 from app.database import AsyncSessionLocal
 from app.models.quiz_result import QuizResult
 
@@ -25,3 +26,23 @@ async def save_quiz_result(
         session.add(result)
         await session.commit()
         return {"message": "퀴즈 결과 저장 완료!"}
+
+async def get_user_level(user_email: str):
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(QuizResult)
+            .where(QuizResult.user_email == user_email)
+            .order_by(desc(QuizResult.created_at))
+            .limit(1)
+        )
+        r = result.scalar_one_or_none()
+        if not r:
+            return {"overall_level": 1, "categories": {}}
+        
+        return {
+            "overall_level": r.overall_level,
+            "categories": {
+                r.category1: r.category1_level,
+                r.category2: r.category2_level,
+            }
+        }

@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
-from app.services.quiz_service import save_quiz_result
+from app.services.quiz_service import save_quiz_result, get_user_level
 
 router = APIRouter(prefix="/quiz", tags=["quiz"])
 
@@ -26,3 +26,7 @@ async def submit_quiz_result(data: QuizResultRequest):
         category2_level=data.category2_level,
         overall_level=data.overall_level
     )
+
+@router.get("/level/{user_email}")
+async def get_level(user_email: str):
+    return await get_user_level(user_email)
