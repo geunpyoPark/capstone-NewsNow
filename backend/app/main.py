@@ -1,12 +1,11 @@
 from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware  
 from app.routes import ai, auth, quiz, news, scrap
 from app.database import engine, Base
 from app.models.user import User
 from app.models.quiz_result import QuizResult
-
+from app.models.news import NewsArticle, ArticleVersion, ArticleAsset, ComicStoryboard
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -14,9 +13,7 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
     yield
 
-
 app = FastAPI(lifespan=lifespan)
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
