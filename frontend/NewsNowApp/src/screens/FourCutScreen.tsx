@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,30 +6,47 @@ import {
   SafeAreaView,
   FlatList,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import { colors, categoryColor } from '../theme';
-import { FOURCUT_ALL } from '../data/news';
+
+const BASE_URL = 'https://mainrepo-production-4ca1.up.railway.app';
 
 type Props = {
   navigation: any;
 };
 
 export default function FourCutScreen({ navigation }: Props) {
+  const [fourCutList, setFourCutList] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadFourCut = async () => {
+      try {
+        const res = await fetch(`${BASE_URL}/news/fourcut`);
+        const data = await res.json();
+        setFourCutList(data);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    loadFourCut();
+  }, []);
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>네컷뉴스</Text>
         <Text style={styles.subtitle}>긴 이야기를 4컷으로 가볍게 📖</Text>
       </View>
-
       <FlatList
-        data={FOURCUT_ALL}
-        keyExtractor={item => item.id}
+        data={fourCutList}
+        keyExtractor={item => String(item.id)}
         contentContainerStyle={styles.grid}
         numColumns={2}
         columnWrapperStyle={styles.row}
         renderItem={({ item }) => {
-          const color = categoryColor(item.cat);
+          const color = categoryColor(item.category);
           return (
             <TouchableOpacity
               style={styles.card}
@@ -37,19 +54,25 @@ export default function FourCutScreen({ navigation }: Props) {
               onPress={() => navigation.navigate('FourCutDetail', { fourCutId: item.id })}
             >
               <View style={[styles.thumb, { backgroundColor: color }]}>
-                <Text style={styles.thumbEmoji}>📰</Text>
+                {item.comic_path ? (
+                  <Image
+                    source={{ uri: item.comic_path }}
+                    style={styles.thumbImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Text style={styles.thumbEmoji}>📰</Text>
+                )}
                 <View style={styles.fourCutBadge}>
                   <Text style={styles.fourCutBadgeText}>4컷</Text>
                 </View>
               </View>
               <View style={styles.body}>
-                <Text style={[styles.cat, { color }]}>{item.cat}</Text>
+                <Text style={[styles.cat, { color }]}>{item.category}</Text>
                 <Text style={styles.cardTitle} numberOfLines={2}>
                   {item.title}
                 </Text>
-                <Text style={styles.meta}>
-                  조회 {item.views.toLocaleString()} · {item.time}
-                </Text>
+                <Text style={styles.meta}>{item.pub_date ?? ''}</Text>
               </View>
             </TouchableOpacity>
           );
@@ -83,6 +106,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+  },
+  thumbImage: {
+    width: '100%',
+    height: '100%',
   },
   thumbEmoji: { fontSize: 40 },
   fourCutBadge: {

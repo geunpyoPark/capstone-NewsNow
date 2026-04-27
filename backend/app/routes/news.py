@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from app.services.news_service import get_news_list, get_news_detail, get_fourcut_list
 
 router = APIRouter(prefix="/news", tags=["news"])
@@ -9,7 +9,10 @@ async def fetch_news(category: str = None, level: int = 1):
 
 @router.get("/fourcut")
 async def fetch_fourcut():
-    return await get_fourcut_list()
+    try:
+        return await get_fourcut_list()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{article_id}")
 async def fetch_news_detail(article_id: int, level: int = 1):
