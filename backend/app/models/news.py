@@ -18,6 +18,7 @@ class ArticleVersion(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     article_id = Column(Integer)
     levels = Column(JSONB)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class ArticleAsset(Base):
     __tablename__ = "article_assets"
@@ -25,3 +26,15 @@ class ArticleAsset(Base):
     article_id = Column(Integer)
     quizzes = Column(JSONB)
     highlights = Column(JSONB)
+
+class ComicStoryboard(Base):
+    __tablename__ = "comic_storyboards"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    article_id = Column(Integer)
+    character_profile = Column(JSONB)
+    style_profile = Column(JSONB)
+    panels = Column(JSONB)
+    bubble_layouts = Column(JSONB)
+    comic_path = Column(String)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now())
