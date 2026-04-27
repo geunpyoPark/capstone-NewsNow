@@ -60,7 +60,7 @@ const quizData: Record<string, QuizItem[]> = {
 };
 
 export default function QuizScreen({ navigation, route }: Props) {
-  const { selectedCategories, currentCategoryIndex, categoryScores = {}, userEmail, userName } = route.params;
+  const { selectedCategories, currentCategoryIndex, categoryScores = {}, userEmail } = route.params;
 
   const currentCategory = selectedCategories[currentCategoryIndex];
   const questions = useMemo(() => quizData[currentCategory] || [], [currentCategory]);
@@ -114,12 +114,7 @@ export default function QuizScreen({ navigation, route }: Props) {
         selectedCategories,
         currentCategoryIndex: currentCategoryIndex + 1,
         categoryScores: updatedCategoryScores,
-<<<<<<< HEAD
         userEmail,
-=======
-        userEmail, // 추가!
-        userName,  // 이름도 다음 퀴즈로 전달
->>>>>>> 69ec28bd939bac8a7443a4efcb459d3f073656c1
       });
       return;
     }
@@ -127,12 +122,7 @@ export default function QuizScreen({ navigation, route }: Props) {
     navigation.replace('LevelResult', {
       selectedCategories,
       categoryScores: updatedCategoryScores,
-<<<<<<< HEAD
       userEmail,
-=======
-      userEmail, // 추가!
-      userName,  // 이름도 결과 화면으로 전달
->>>>>>> 69ec28bd939bac8a7443a4efcb459d3f073656c1
     });
   };
 

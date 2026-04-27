@@ -40,6 +40,10 @@ export default function MyPageScreen({ navigation }: Props) {
   const folderCounts = useMemo(() => {
     const scrappedNews = NEWS_DATA.filter(n => scrappedIds.includes(n.id));
     return SCRAP_FOLDERS.reduce<Record<string, number>>((acc, f) => {
+      if (f.kind === 'word') {
+        acc[f.id] = 0;
+        return acc;
+      }
       acc[f.id] = scrappedNews.filter(n => f.categories.includes(n.cat)).length;
       return acc;
     }, {});
@@ -139,6 +143,7 @@ export default function MyPageScreen({ navigation }: Props) {
                 navigation.navigate('ScrapFolder', {
                   folderId: f.id,
                   folderName: f.name,
+                  folderKind: f.kind ?? 'news',
                   folderCategories: f.categories,
                 })
               }

@@ -18,18 +18,21 @@ type Props = {
 };
 
 export default function ScrapFolderScreen({ navigation, route }: Props) {
-  const { folderName, folderCategories } = route.params ?? {};
+  const { folderName, folderCategories, folderKind } = route.params ?? {};
   const { scrappedIds, readIds, toggleScrap, isScrapped } = useAppContext();
 
   // 폴더에 지정된 카테고리에 속하는 스크랩만 필터
   // folderCategories가 없으면 (구버전 호환) 전체 스크랩을 보여줌
   const items = useMemo(() => {
+    if (folderKind === 'word') {
+      return [];
+    }
     const scrapped = NEWS_DATA.filter(n => scrappedIds.includes(n.id));
     if (!folderCategories || !Array.isArray(folderCategories) || folderCategories.length === 0) {
       return scrapped;
     }
     return scrapped.filter(n => folderCategories.includes(n.cat));
-  }, [scrappedIds, folderCategories]);
+  }, [scrappedIds, folderCategories, folderKind]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -60,9 +63,13 @@ export default function ScrapFolderScreen({ navigation, route }: Props) {
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyEmoji}>📭</Text>
-            <Text style={styles.emptyTitle}>스크랩한 뉴스가 없어요</Text>
+            <Text style={styles.emptyTitle}>
+              {folderKind === 'word' ? '스크랩한 단어가 없어요' : '스크랩한 뉴스가 없어요'}
+            </Text>
             <Text style={styles.emptySub}>
-              뉴스 상세 화면에서 ☆ 버튼을 눌러 저장해 보세요
+              {folderKind === 'word'
+                ? '단어 스크랩 기능이 연결되면 여기서 모아볼 수 있어요'
+                : '뉴스 상세 화면에서 ☆ 버튼을 눌러 저장해 보세요'}
             </Text>
           </View>
         }
