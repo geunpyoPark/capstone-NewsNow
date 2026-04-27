@@ -28,9 +28,9 @@ export default function CategoryPill({ label, active, onPress }: Props) {
 
 const styles = StyleSheet.create({
   pill: {
-    minWidth: 64,
+    width: 88,
     minHeight: 44,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 11,
     borderRadius: 999,
     borderWidth: 1,

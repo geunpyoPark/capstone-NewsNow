@@ -73,6 +73,10 @@ export default function HomeScreen({ navigation }: Props) {
     );
     return rec.length >= 2 ? rec.slice(0, 4) : NEWS_DATA.slice(0, 4);
   }, [selectedCategories]);
+  const recommendedLoop = useMemo(() => {
+    if (recommended.length <= 1) return recommended;
+    return [...recommended, recommended[0]];
+  }, [recommended]);
 
   // 오늘의 인기 뉴스: 조회수 상위 5개
   const popular = useMemo(
@@ -88,9 +92,9 @@ export default function HomeScreen({ navigation }: Props) {
     if (recommended.length <= 1) return;
     const t = setInterval(() => {
       setSlideIdx(prev => {
-        const next = (prev + 1) % recommended.length;
+        const next = prev + 1;
         slideRef.current?.scrollToIndex({ index: next, animated: true });
-        return next;
+        return next >= recommended.length ? 0 : next;
       });
     }, 3000);
     return () => clearInterval(t);
@@ -99,6 +103,13 @@ export default function HomeScreen({ navigation }: Props) {
   const handleSlideScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const x = e.nativeEvent.contentOffset.x;
     const idx = Math.round(x / SLIDE_WIDTH);
+    if (recommended.length > 1 && idx === recommended.length) {
+      setSlideIdx(0);
+      requestAnimationFrame(() => {
+        slideRef.current?.scrollToIndex({ index: 0, animated: false });
+      });
+      return;
+    }
     if (idx !== slideIdx) setSlideIdx(idx);
   };
 
@@ -137,11 +148,17 @@ export default function HomeScreen({ navigation }: Props) {
             <Text style={styles.fontBtnSmall}>가</Text>
             <Text style={styles.fontBtnLarge}>가</Text>
           </TouchableOpacity>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {displayName[0]?.toUpperCase() ?? '🙂'}
-            </Text>
-          </View>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('MyPage')}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {displayName[0]?.toUpperCase() ?? '🙂'}
+              </Text>
+            </View>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -192,8 +209,8 @@ export default function HomeScreen({ navigation }: Props) {
 
           <FlatList
             ref={slideRef}
-            data={recommended}
-            keyExtractor={n => n.id}
+            data={recommendedLoop}
+            keyExtractor={(n, i) => `${n.id}-${i}`}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}

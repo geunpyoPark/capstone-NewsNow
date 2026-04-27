@@ -1,6 +1,7 @@
 """네이버 뉴스 검색과 기사 본문 추출을 담당하는 수집 모듈."""
 
 import os
+from urllib.parse import urlparse
 import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
@@ -72,20 +73,32 @@ class NaverNewsCrawler:
             response.raise_for_status() 
 
             soup = BeautifulSoup(response.text, 'html.parser')
-            
-            # --- 본문 영역 탐색 (순서가 매우 중요합니다!) ---
-            # 1순위: 네이버 뉴스 모바일/PC 순수 본문 ID (UI 버튼 찌꺼기 방지)
-            content = soup.find('div', id='dic_area') 
-            
-            # 2순위: 그 외 일반 언론사 사이트를 위한 예비 로직
-            if not content:
-                content = soup.find('article')
-            if not content:
-                content = soup.find('div', id='articleBodyContents') 
-            if not content:
-                content = soup.find('div', class_='article_body')
-            if not content:
-                content = soup.find('div', itemprop='articleBody')
+            domain = urlparse(url).netloc.lower()
+
+            selector_candidates = [
+                ("div", {"id": "dic_area"}),
+                ("div", {"id": "articleBodyContents"}),
+                ("div", {"class": "article_body"}),
+                ("div", {"itemprop": "articleBody"}),
+                ("article", {}),
+            ]
+
+            # 언론사별 본문 구조를 우선 탐색한다.
+            if "jbnews.com" in domain:
+                selector_candidates = [
+                    ("div", {"id": "article-view-content-div"}),
+                    ("div", {"class": "article-view-content-div"}),
+                    ("section", {"class": "article-view-content-div"}),
+                    ("div", {"class": "view-content"}),
+                    ("div", {"class": "article_txt"}),
+                    *selector_candidates,
+                ]
+
+            content = None
+            for tag, attrs in selector_candidates:
+                content = soup.find(tag, attrs=attrs)
+                if content:
+                    break
 
             # --- 텍스트 정제 ---
             if content:
@@ -95,13 +108,36 @@ class NaverNewsCrawler:
                 
                 # HTML 태그를 벗겨내고 순수 텍스트만 추출 (공백 정리 포함)
                 clean_text = content.get_text(separator=' ', strip=True)
-                return clean_text
+                if self._looks_like_article_body(clean_text):
+                    return clean_text
+                print(f"[{domain}] 본문 후보가 메뉴/플랫폼 소개로 보여 추출 제외")
+                return None
             else:
                 return None 
 
         except Exception as e:
             print(f"[{url}] 본문 추출 중 에러 발생: {e}")
             return None
+
+    def _looks_like_article_body(self, text):
+        """메뉴/플랫폼 소개처럼 보이는 텍스트는 본문 후보에서 제외한다."""
+        if not text or len(text) < 200:
+            return False
+
+        suspicious_phrases = [
+            "회원가입",
+            "로그인",
+            "구독",
+            "전체메뉴",
+            "정치 경제 사회 문화 스포츠 연예",
+            "신문입니다",
+            "카테고리",
+            "인터넷 신문",
+            "대표하는 뉴스 사이트",
+            "독자들은 회원가입을 통해",
+        ]
+        hits = sum(1 for phrase in suspicious_phrases if phrase in text)
+        return hits < 2
 
 
 # ==========================================
