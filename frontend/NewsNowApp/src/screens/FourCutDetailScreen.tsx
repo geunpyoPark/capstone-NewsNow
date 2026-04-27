@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,9 +7,11 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { colors, categoryColor } from '../theme';
-import { FOURCUT_ALL } from '../data/news';
+
+const BASE_URL = 'https://mainrepo-production-4ca1.up.railway.app';
 
 type Props = {
   navigation: any;
@@ -20,8 +22,32 @@ const { width: SCREEN_W } = Dimensions.get('window');
 
 export default function FourCutDetailScreen({ navigation, route }: Props) {
   const { fourCutId } = route.params;
-  const item = useMemo(() => FOURCUT_ALL.find(f => f.id === fourCutId), [fourCutId]);
+  const [item, setItem] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
+
+  useEffect(() => {
+    const loadDetail = async () => {
+      try {
+        const res = await fetch(`${BASE_URL}/news/${fourCutId}`);
+        const data = await res.json();
+        setItem(data);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadDetail();
+  }, [fourCutId]);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ActivityIndicator size="large" color={colors.primary} style={{ flex: 1 }} />
+      </SafeAreaView>
+    );
+  }
 
   if (!item) {
     return (
@@ -33,13 +59,10 @@ export default function FourCutDetailScreen({ navigation, route }: Props) {
     );
   }
 
-  const color = categoryColor(item.cat);
-  // 2048×2048 이미지를 4개 사분면으로 분할
-  // 프레임 크기 = SCREEN_W - padding
+  const color = categoryColor(item.category);
   const frameSize = SCREEN_W - 80;
-  const quadIndex = page; // 0,1,2,3
-
-  const total = item.panels.length;
+  const quadIndex = page;
+  const total = 4;
 
   const handlePrev = () => setPage(p => Math.max(0, p - 1));
   const handleNext = () => setPage(p => Math.min(total - 1, p + 1));
@@ -56,45 +79,38 @@ export default function FourCutDetailScreen({ navigation, route }: Props) {
 
       <View style={styles.header}>
         <View style={[styles.catPill, { backgroundColor: color }]}>
-          <Text style={styles.catPillText}>{item.cat}</Text>
+          <Text style={styles.catPillText}>{item.category}</Text>
         </View>
         <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.subtitle}>{item.subtitle}</Text>
       </View>
 
       <View style={styles.frameWrap}>
         <View style={[styles.frame, { width: frameSize, height: frameSize }]}>
-          <Image
-            // Cloudinary URL이 있으면 원격, 없으면 로컬 데모 이미지 사용
-            source={
-              item.imageUrl
-                ? { uri: item.imageUrl }
-                : require('../assets/images/news_cartoon.png')
-            }
-            style={{
-              width: frameSize * 2,
-              height: frameSize * 2,
-              position: 'absolute',
-              // 사분면 이동: 0=LT, 1=RT, 2=LB, 3=RB
-              left: (quadIndex % 2) === 0 ? 0 : -frameSize,
-              top: quadIndex < 2 ? 0 : -frameSize,
-            }}
-            resizeMode="cover"
-          />
-          {/* 번호 오버레이 */}
+          {item.comic_path ? (
+            <Image
+              source={{ uri: item.comic_path }}
+              style={{
+                width: frameSize * 2,
+                height: frameSize * 2,
+                position: 'absolute',
+                left: (quadIndex % 2) === 0 ? 0 : -frameSize,
+                top: quadIndex < 2 ? 0 : -frameSize,
+              }}
+              resizeMode="cover"
+            />
+          ) : (
+            <Image
+              source={require('../assets/images/news_cartoon.png')}
+              style={{ width: frameSize, height: frameSize }}
+              resizeMode="cover"
+            />
+          )}
           <View style={[styles.panelNumber, { backgroundColor: color }]}>
             <Text style={styles.panelNumberText}>{page + 1} / {total}</Text>
           </View>
         </View>
-
-        {/* 패널 캡션 */}
-        <View style={styles.caption}>
-          <Text style={styles.captionTitle}>{item.panels[page].title}</Text>
-          <Text style={styles.captionBody}>{item.panels[page].body}</Text>
-        </View>
       </View>
 
-      {/* 네비게이션 */}
       <View style={styles.nav}>
         <TouchableOpacity
           style={[styles.navBtn, page === 0 && styles.navBtnDisabled]}
@@ -128,7 +144,6 @@ export default function FourCutDetailScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -141,7 +156,6 @@ const styles = StyleSheet.create({
   },
   backIcon: { fontSize: 28, color: colors.textPrimary, width: 32 },
   topTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
-
   header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
   catPill: {
     alignSelf: 'flex-start',
@@ -152,8 +166,6 @@ const styles = StyleSheet.create({
   },
   catPillText: { color: colors.white, fontWeight: '700', fontSize: 12 },
   title: { fontSize: 20, fontWeight: '800', color: colors.textPrimary, lineHeight: 28 },
-  subtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },
-
   frameWrap: { alignItems: 'center', paddingHorizontal: 20, flex: 1, justifyContent: 'center' },
   frame: {
     borderRadius: 20,
@@ -173,21 +185,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   panelNumberText: { color: colors.white, fontSize: 12, fontWeight: '700' },
-
-  caption: {
-    marginTop: 16,
-    padding: 16,
-    backgroundColor: colors.white,
-    borderRadius: 14,
-    alignSelf: 'stretch',
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
-  },
-  captionTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginBottom: 6 },
-  captionBody: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
-
   nav: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -204,7 +201,6 @@ const styles = StyleSheet.create({
   },
   navBtnDisabled: { opacity: 0.4 },
   navText: { fontSize: 13, color: colors.textPrimary, fontWeight: '600' },
-
   dots: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   dot: {
     width: 6,
