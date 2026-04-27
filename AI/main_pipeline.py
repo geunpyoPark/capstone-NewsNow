@@ -573,9 +573,14 @@ if __name__ == "__main__":
         {"category": "사회", "keyword": "우리네 이웃"},
         {"category": "IT과학", "keyword": "AI 반도체 기술"}
     ]
-    
+
+    rounds = 3
+
     print("🚀 NewsNow 자동화 공장 가동")
-    for task in tasks:
-        print(f"\n📂 [{task['category']}] 섹션 수집 시작...")
-        run_news_now_pipeline(keyword=task['keyword'], count=3, category=task['category'])
-        time.sleep(5)
+    print("🔄 카테고리별 1개씩 순서대로 생성합니다.")
+    for round_index in range(rounds):
+        print(f"\n========== 생성 라운드 {round_index + 1}/{rounds} ==========")
+        for task in tasks:
+            print(f"\n📂 [{task['category']}] 기사 1개 생성 시작...")
+            run_news_now_pipeline(keyword=task['keyword'], count=1, category=task['category'])
+            time.sleep(5)
