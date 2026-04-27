@@ -13,6 +13,7 @@ import { CAT_FILTERS, NewsItem } from '../data/news';
 import { useAppContext } from '../context/AppContext';
 import NewsCard from '../components/NewsCard';
 import CategoryPill from '../components/CategoryPill';
+import { formatNewsDate } from '../utils/date';
 
 const BASE_URL = 'https://mainrepo-production-4ca1.up.railway.app';
 
@@ -51,7 +52,7 @@ export default function NewsListScreen({ navigation }: Props) {
           summary: a.content ?? '',
           body: [],
           views: 0,
-          time: a.pub_date ?? '',
+          time: formatNewsDate(a.pub_date, 'compact'),
           level: levelNum === 1 ? '하' : levelNum === 2 ? '중' : '상',
           color: '',
         }));

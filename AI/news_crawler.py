@@ -119,6 +119,45 @@ class NaverNewsCrawler:
             print(f"[{url}] 본문 추출 중 에러 발생: {e}")
             return None
 
+    def extract_best_title(self, url, fallback_title):
+        """기사 원문에서 더 온전한 제목을 찾고, 실패하면 기존 제목을 사용한다."""
+        try:
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+
+            soup = BeautifulSoup(response.text, 'html.parser')
+            candidates = [
+                soup.find("meta", property="og:title"),
+                soup.find("meta", attrs={"name": "twitter:title"}),
+                soup.find("h1"),
+                soup.find("title"),
+            ]
+
+            for candidate in candidates:
+                if not candidate:
+                    continue
+                if candidate.name == "meta":
+                    raw_title = candidate.get("content", "")
+                else:
+                    raw_title = candidate.get_text(" ", strip=True)
+
+                title = self._clean_article_title(raw_title)
+                if not title:
+                    continue
+
+                if fallback_title.endswith("...") and len(title) > len(fallback_title):
+                    return title
+                if len(title) >= len(fallback_title) and "..." not in title:
+                    return title
+
+            return fallback_title
+        except Exception as e:
+            print(f"[{url}] 제목 보강 중 에러 발생: {e}")
+            return fallback_title
+
     def _looks_like_article_body(self, text):
         """메뉴/플랫폼 소개처럼 보이는 텍스트는 본문 후보에서 제외한다."""
         if not text or len(text) < 200:
@@ -138,6 +177,17 @@ class NaverNewsCrawler:
         ]
         hits = sum(1 for phrase in suspicious_phrases if phrase in text)
         return hits < 2
+
+    def _clean_article_title(self, title):
+        cleaned = (title or "").replace("&quot;", '"').strip()
+        if not cleaned:
+            return ""
+
+        for separator in (" | ", " - ", " :: "):
+            if separator in cleaned:
+                cleaned = cleaned.split(separator)[0].strip()
+
+        return cleaned
 
 
 # ==========================================
