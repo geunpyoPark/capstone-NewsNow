@@ -1,4 +1,5 @@
 import React, {useEffect} from 'react';
+import { LogBox } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { initializeKakaoSDK } from '@react-native-kakao/core';
@@ -19,6 +20,9 @@ const Stack = createNativeStackNavigator();
 
 export default function App() {
   useEffect(() => {
+    // 개발 중 하단 경고 배너가 UI를 가리지 않도록 숨긴다.
+    LogBox.ignoreAllLogs(true);
+
     initializeKakaoSDK('6318cc7d05835c4758ac2f34b72b5e15').catch(error => {
       console.warn('Failed to initialize Kakao SDK', error);
     });
