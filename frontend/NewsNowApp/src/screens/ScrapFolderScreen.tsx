@@ -19,20 +19,20 @@ type Props = {
 
 export default function ScrapFolderScreen({ navigation, route }: Props) {
   const { folderName, folderCategories, folderKind } = route.params ?? {};
-  const { scrappedIds, readIds, toggleScrap, isScrapped } = useAppContext();
+  const { scrappedIds, readIds, toggleScrap, isScrapped, scrappedWords } = useAppContext();
 
   // 폴더에 지정된 카테고리에 속하는 스크랩만 필터
   // folderCategories가 없으면 (구버전 호환) 전체 스크랩을 보여줌
   const items = useMemo(() => {
     if (folderKind === 'word') {
-      return [];
+      return scrappedWords;
     }
     const scrapped = NEWS_DATA.filter(n => scrappedIds.includes(n.id));
     if (!folderCategories || !Array.isArray(folderCategories) || folderCategories.length === 0) {
       return scrapped;
     }
     return scrapped.filter(n => folderCategories.includes(n.cat));
-  }, [scrappedIds, folderCategories, folderKind]);
+  }, [scrappedIds, folderCategories, folderKind, scrappedWords]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -52,13 +52,20 @@ export default function ScrapFolderScreen({ navigation, route }: Props) {
         keyExtractor={i => i.id}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => (
-          <NewsCard
-            item={item}
-            read={readIds.includes(item.id)}
-            scrapped={isScrapped(item.id)}
-            onPress={() => navigation.navigate('NewsDetail', { newsId: item.id })}
-            onScrapPress={() => toggleScrap(item.id)}
-          />
+          folderKind === 'word' ? (
+            <View style={styles.wordCard}>
+              <Text style={styles.wordTitle}>{item.word}</Text>
+              <Text style={styles.wordDefinition}>{item.definition}</Text>
+            </View>
+          ) : (
+            <NewsCard
+              item={item}
+              read={readIds.includes(item.id)}
+              scrapped={isScrapped(item.id)}
+              onPress={() => navigation.navigate('NewsDetail', { newsId: item.id })}
+              onScrapPress={() => toggleScrap(item.id)}
+            />
+          )
         )}
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -94,6 +101,18 @@ const styles = StyleSheet.create({
   topTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
 
   list: { padding: 20, paddingBottom: 40 },
+  wordCard: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  wordTitle: { fontSize: 17, fontWeight: '800', color: colors.textPrimary, marginBottom: 8 },
+  wordDefinition: { fontSize: 14, lineHeight: 21, color: colors.textSecondary },
   empty: { paddingVertical: 80, alignItems: 'center' },
   emptyEmoji: { fontSize: 44, marginBottom: 12 },
   emptyTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginBottom: 6 },

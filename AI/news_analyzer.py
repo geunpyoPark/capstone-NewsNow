@@ -69,7 +69,7 @@ class NewsAnalyzer:
         3. **퀴즈 4지선다 고정**: 모든 퀴즈는 반드시 **4개의 선택지**로만 구성해.
         4. **선택지 길이 균형**: 특히 'summary' 퀴즈에서 정답만 길어지지 않도록 모든 선택지의 글자 수를 비슷하게 맞춰.
         5. **메타 데이터 삭제**: 기자명, 매체명 등 출처 정보는 1%도 남기지 마.
-        6. **핵심 단어 추출 (Highlights)**: 본문에 등장하는 단어 중 사용자가 어려워할 만한 경제/시사 용어 5~7개를 추출해. 사전적 정의가 아닌, 이 기사의 [맥락]에 맞춘 아주 쉬운 풀이(툴팁용)를 제공해줘.
+        6. **핵심 단어 추출 (Highlights)**: 각 레벨 본문에 실제로 등장하는 단어 중 사용자가 어려워할 만한 경제/시사 용어 4~6개를 레벨별로 따로 추출해. 사전적 정의가 아닌, 그 레벨 본문 [맥락]에 맞춘 아주 쉬운 풀이(툴팁용)를 제공해줘.
 
         [📊 레벨별 가이드]
         - level_1 (입문): 5~6문장. 초등학생이 핵심 사건과 결과를 이해할 수 있게 쉬운 단어로 설명해.
@@ -86,21 +86,53 @@ class NewsAnalyzer:
         - 칼럼/사설/기고문일 때는 원문에 있는 핵심 정책명, 노선명, 제도명, 지역명 같은 구체 명사를 가능하면 1~2개는 남겨서 맥락이 흐려지지 않게 해.
 
         [📝 퀴즈 구성 (어휘/맥락/요약)]
-        1. vocabulary: '뉴노멀', '3고 현상' 등 대중적 핵심 키워드. (4지선다)
-        2. context: 사건의 인과관계를 묻는 질문(예: 주된 이유는?). (4지선다)
-        3. summary: 전체 주제 찾기. (4지선다, 보기 길이 균등화)
+        - 퀴즈는 각 레벨 본문을 읽은 학생이 바로 풀 수 있어야 한다.
+        - 현재 레벨 본문에 실제로 등장하지 않는 단어, 표현, 고유명사로 문제를 내면 안 된다.
+        - 특히 vocabulary 퀴즈는 반드시 그 레벨 본문에 실제 등장한 단어만 사용해야 한다.
+        - 각 레벨마다 아래 3문항을 따로 만들어라.
+        1. vocabulary: 그 레벨 본문에 실제 등장한 핵심 단어 1개를 묻기. (4지선다)
+        2. context: 그 레벨 본문에 드러난 인과관계를 묻기. (4지선다)
+        3. summary: 그 레벨 본문의 전체 주제를 묻기. (4지선다, 보기 길이 균등화)
 
         [JSON 출력 규격]
         {{
             "levels": {{ "level_1": "...", "level_2": "...", "level_3": "...", "level_4": "..." }},
-            "quizzes": [
-                {{ "type": "vocabulary", "question": "...", "options": ["1", "2", "3", "4"], "answer": 0, "explanation": "..." }},
-                {{ "type": "context", "question": "...", "options": ["1", "2", "3", "4"], "answer": 0, "explanation": "..." }},
-                {{ "type": "summary", "question": "...", "options": ["1", "2", "3", "4"], "answer": 0, "explanation": "..." }}
-            ],
-            "highlights": [
-                {{ "word": "단어", "definition": "이 기사의 맥락에 맞춘 쉬운 풀이" }}
-            ]
+            "quizzes": {{
+                "level_1": [
+                    {{ "type": "vocabulary", "question": "...", "options": ["1", "2", "3", "4"], "answer": 0, "explanation": "..." }},
+                    {{ "type": "context", "question": "...", "options": ["1", "2", "3", "4"], "answer": 0, "explanation": "..." }},
+                    {{ "type": "summary", "question": "...", "options": ["1", "2", "3", "4"], "answer": 0, "explanation": "..." }}
+                ],
+                "level_2": [
+                    {{ "type": "vocabulary", "question": "...", "options": ["1", "2", "3", "4"], "answer": 0, "explanation": "..." }},
+                    {{ "type": "context", "question": "...", "options": ["1", "2", "3", "4"], "answer": 0, "explanation": "..." }},
+                    {{ "type": "summary", "question": "...", "options": ["1", "2", "3", "4"], "answer": 0, "explanation": "..." }}
+                ],
+                "level_3": [
+                    {{ "type": "vocabulary", "question": "...", "options": ["1", "2", "3", "4"], "answer": 0, "explanation": "..." }},
+                    {{ "type": "context", "question": "...", "options": ["1", "2", "3", "4"], "answer": 0, "explanation": "..." }},
+                    {{ "type": "summary", "question": "...", "options": ["1", "2", "3", "4"], "answer": 0, "explanation": "..." }}
+                ],
+                "level_4": [
+                    {{ "type": "vocabulary", "question": "...", "options": ["1", "2", "3", "4"], "answer": 0, "explanation": "..." }},
+                    {{ "type": "context", "question": "...", "options": ["1", "2", "3", "4"], "answer": 0, "explanation": "..." }},
+                    {{ "type": "summary", "question": "...", "options": ["1", "2", "3", "4"], "answer": 0, "explanation": "..." }}
+                ]
+            }},
+            "highlights": {{
+                "level_1": [
+                    {{ "word": "단어", "definition": "level_1 본문 맥락에 맞춘 쉬운 풀이" }}
+                ],
+                "level_2": [
+                    {{ "word": "단어", "definition": "level_2 본문 맥락에 맞춘 쉬운 풀이" }}
+                ],
+                "level_3": [
+                    {{ "word": "단어", "definition": "level_3 본문 맥락에 맞춘 쉬운 풀이" }}
+                ],
+                "level_4": [
+                    {{ "word": "단어", "definition": "level_4 본문 맥락에 맞춘 쉬운 풀이" }}
+                ]
+            }}
         }}
         """
 

@@ -4,6 +4,14 @@ import { XP_CORRECT, XP_WRONG } from '../data/news';
 import { xpToLevel } from '../theme';
 
 type CatXp = Record<string, number>;
+type ScrappedWord = {
+  id: string;
+  word: string;
+  definition: string;
+  articleId?: number | null;
+};
+
+const BASE_URL = 'https://mainrepo-production-4ca1.up.railway.app';
 
 export type FontScale = 'sm' | 'md' | 'lg';
 
@@ -27,6 +35,7 @@ type AppState = {
   selectedCategories: string[];
   readIds: string[];
   scrappedIds: string[];
+  scrappedWords: ScrappedWord[];
   catXp: CatXp;
   solvedQuizIds: string[];
   // 이번주 요일별 읽음 상태 (월=0 ~ 일=6).
@@ -44,6 +53,9 @@ type AppContextValue = AppState & {
   markRead: (newsId: string) => void;
   toggleScrap: (newsId: string) => void;
   isScrapped: (newsId: string) => boolean;
+  scrapWord: (word: string, definition: string, articleId: number) => Promise<{ ok: boolean; message: string }>;
+  isWordScrapped: (word: string, articleId?: number | null) => boolean;
+  refreshScrapWords: () => Promise<void>;
   addQuizResult: (newsId: string, cat: string, correct: boolean) => { firstAttempt: boolean; delta: number; levelUp: boolean };
   getCategoryXp: (cat: string) => number;
   getCategoryLevel: (cat: string) => '하' | '중' | '상';
@@ -60,6 +72,7 @@ const defaultState: AppState = {
   selectedCategories: [],
   readIds: [],
   scrappedIds: [],
+  scrappedWords: [],
   catXp: {},
   solvedQuizIds: [],
   weekStartMs: 0,
@@ -112,6 +125,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const { ready, ...rest } = state;
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(rest)).catch(() => {});
   }, [state]);
+
+  const refreshScrapWords = useCallback(async () => {
+    if (!state.userEmail) {
+      setState(s => ({ ...s, scrappedWords: [] }));
+      return;
+    }
+    try {
+      const res = await fetch(`${BASE_URL}/scrap/words/${encodeURIComponent(state.userEmail)}`);
+      const data = await res.json();
+      const words = Array.isArray(data)
+        ? data.map((item: any) => ({
+            id: String(item.id),
+            word: item.word,
+            definition: item.definition,
+            articleId: item.article_id ?? null,
+          }))
+        : [];
+      setState(s => ({ ...s, scrappedWords: words }));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [state.userEmail]);
+
+  useEffect(() => {
+    refreshScrapWords();
+  }, [refreshScrapWords]);
 
   const setUserEmail = useCallback((email: string | null) => {
     setState(s => ({ ...s, userEmail: email }));
@@ -173,6 +212,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return state.scrappedIds.includes(newsId);
   }, [state.scrappedIds]);
 
+  const isWordScrapped = useCallback((word: string, articleId?: number | null) => {
+    return state.scrappedWords.some(item => item.word === word && (articleId == null || item.articleId === articleId));
+  }, [state.scrappedWords]);
+
+  const scrapWord = useCallback(async (word: string, definition: string, articleId: number) => {
+    if (!state.userEmail) {
+      return { ok: false, message: '로그인 후 사용할 수 있어요.' };
+    }
+
+    if (state.scrappedWords.some(item => item.word === word && item.articleId === articleId)) {
+      return { ok: true, message: '이미 저장한 단어예요.' };
+    }
+
+    try {
+      const res = await fetch(`${BASE_URL}/scrap/word`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_email: state.userEmail,
+          word,
+          definition,
+          article_id: articleId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { ok: false, message: data?.detail ?? '단어 저장에 실패했어요.' };
+      }
+      await refreshScrapWords();
+      return { ok: true, message: data?.message ?? '단어 스크랩 저장 완료!' };
+    } catch (e) {
+      console.error(e);
+      return { ok: false, message: '단어 저장 중 오류가 발생했어요.' };
+    }
+  }, [refreshScrapWords, state.scrappedWords, state.userEmail]);
+
   const addQuizResult = useCallback((newsId: string, cat: string, correct: boolean) => {
     const firstAttempt = !state.solvedQuizIds.includes(newsId);
     const delta = firstAttempt ? (correct ? XP_CORRECT : XP_WRONG) : 0;
@@ -219,6 +294,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     markRead,
     toggleScrap,
     isScrapped,
+    scrapWord,
+    isWordScrapped,
+    refreshScrapWords,
     addQuizResult,
     getCategoryXp,
     getCategoryLevel,
@@ -235,4 +313,3 @@ export const useAppContext = () => {
   if (!ctx) throw new Error('useAppContext must be used inside AppProvider');
   return ctx;
 };
-

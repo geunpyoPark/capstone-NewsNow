@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { colors, categoryColor } from '../theme';
 import { useAppContext, FONT_SCALE_MULTIPLIER } from '../context/AppContext';
@@ -27,6 +29,8 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
     markRead,
     toggleScrap,
     isScrapped,
+    scrapWord,
+    isWordScrapped,
     addQuizResult,
     solvedQuizIds,
     fontScale,
@@ -40,6 +44,7 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [xpDelta, setXpDelta] = useState(0);
+  const [selectedHighlight, setSelectedHighlight] = useState<{ word: string; definition: string } | null>(null);
   const alreadySolved = solvedQuizIds.includes(String(newsId));
 
   useEffect(() => {
@@ -86,6 +91,62 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
   const color = categoryColor(item.category);
   const quiz = item.quizzes?.[0] ?? null;
   const scrapped = isScrapped(String(newsId));
+  const highlights = Array.isArray(item.highlights) ? item.highlights : [];
+
+  const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  const renderHighlightedContent = () => {
+    const content = item.content ?? '';
+    if (!content || highlights.length === 0) {
+      return (
+        <Text style={[styles.paragraph, { fontSize: 15 * fontMul, lineHeight: 24 * fontMul }]}>
+          {content}
+        </Text>
+      );
+    }
+
+    const uniqueHighlights = highlights
+      .filter((entry: any) => entry?.word && content.includes(entry.word))
+      .sort((a: any, b: any) => b.word.length - a.word.length);
+
+    if (uniqueHighlights.length === 0) {
+      return (
+        <Text style={[styles.paragraph, { fontSize: 15 * fontMul, lineHeight: 24 * fontMul }]}>
+          {content}
+        </Text>
+      );
+    }
+
+    const regex = new RegExp(`(${uniqueHighlights.map((entry: any) => escapeRegExp(entry.word)).join('|')})`, 'g');
+    const segments = content.split(regex).filter(Boolean);
+    const definitions = new Map(uniqueHighlights.map((entry: any) => [entry.word, entry.definition]));
+
+    return (
+      <Text style={[styles.paragraph, { fontSize: 15 * fontMul, lineHeight: 24 * fontMul }]}>
+        {segments.map((segment: string, index: number) => {
+          const definition = definitions.get(segment);
+          if (!definition) {
+            return <Text key={`${segment}-${index}`}>{segment}</Text>;
+          }
+          return (
+            <Text
+              key={`${segment}-${index}`}
+              style={styles.highlightedWord}
+              onPress={() => setSelectedHighlight({ word: segment, definition })}
+            >
+              {segment}
+            </Text>
+          );
+        })}
+      </Text>
+    );
+  };
+
+  const handleScrapWord = async () => {
+    if (!selectedHighlight) return;
+    const result = await scrapWord(selectedHighlight.word, selectedHighlight.definition, Number(newsId));
+    Alert.alert(result.ok ? '단어 저장' : '저장 실패', result.message);
+  };
 
   const handleSubmitQuiz = () => {
     if (selectedOption === null || !quiz) return;
@@ -130,9 +191,7 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
         <Text style={styles.meta}>{formatNewsDate(item.pub_date)}</Text>
 
         <View style={styles.body}>
-          <Text style={[styles.paragraph, { fontSize: 15 * fontMul, lineHeight: 24 * fontMul }]}>
-            {item.content}
-          </Text>
+          {renderHighlightedContent()}
         </View>
 
         {quiz && (
@@ -222,6 +281,42 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
           </View>
         )}
       </ScrollView>
+
+      <Modal
+        visible={!!selectedHighlight}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedHighlight(null)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setSelectedHighlight(null)}>
+          <Pressable style={styles.tooltipCard} onPress={e => e.stopPropagation()}>
+            <Text style={styles.tooltipWord}>{selectedHighlight?.word}</Text>
+            <Text style={styles.tooltipDefinition}>{selectedHighlight?.definition}</Text>
+            <View style={styles.tooltipActions}>
+              <TouchableOpacity
+                style={styles.tooltipGhostBtn}
+                onPress={() => setSelectedHighlight(null)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.tooltipGhostText}>닫기</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.tooltipPrimaryBtn,
+                  selectedHighlight && isWordScrapped(selectedHighlight.word, Number(newsId)) && styles.tooltipPrimaryBtnDisabled,
+                ]}
+                onPress={handleScrapWord}
+                activeOpacity={0.85}
+                disabled={!!(selectedHighlight && isWordScrapped(selectedHighlight.word, Number(newsId)))}
+              >
+                <Text style={styles.tooltipPrimaryText}>
+                  {selectedHighlight && isWordScrapped(selectedHighlight.word, Number(newsId)) ? '저장됨' : '단어 스크랩'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -251,6 +346,12 @@ const styles = StyleSheet.create({
   meta: { fontSize: 12, color: colors.textMuted, marginBottom: 20 },
   body: { marginBottom: 24 },
   paragraph: { fontSize: 15, lineHeight: 24, color: colors.textPrimary, marginBottom: 14 },
+  highlightedWord: {
+    backgroundColor: '#FFF1A8',
+    color: colors.textPrimary,
+    fontWeight: '700',
+    borderRadius: 4,
+  },
   quizBox: { backgroundColor: colors.white, borderWidth: 2, borderRadius: 18, padding: 18 },
   quizHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   quizLabel: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
@@ -277,4 +378,38 @@ const styles = StyleSheet.create({
   completeBarFill: { height: '100%', width: '100%', backgroundColor: colors.white, borderRadius: 999 },
   completeBtn: { backgroundColor: 'rgba(255, 255, 255, 0.18)', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   completeBtnText: { color: colors.white, fontSize: 15, fontWeight: '700' },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(17, 24, 39, 0.38)',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  tooltipCard: {
+    backgroundColor: colors.white,
+    borderRadius: 20,
+    padding: 20,
+  },
+  tooltipWord: { fontSize: 20, fontWeight: '800', color: colors.textPrimary, marginBottom: 10 },
+  tooltipDefinition: { fontSize: 15, lineHeight: 23, color: colors.textSecondary, marginBottom: 18 },
+  tooltipActions: { flexDirection: 'row', gap: 10 },
+  tooltipGhostBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+  },
+  tooltipGhostText: { fontSize: 14, fontWeight: '700', color: colors.textSecondary },
+  tooltipPrimaryBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+  },
+  tooltipPrimaryBtnDisabled: {
+    backgroundColor: colors.textSubtle,
+  },
+  tooltipPrimaryText: { fontSize: 14, fontWeight: '700', color: colors.white },
 });
