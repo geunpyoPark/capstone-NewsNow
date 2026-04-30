@@ -105,9 +105,11 @@ export default function FourCutDetailScreen({ navigation, route }: Props) {
               resizeMode="cover"
             />
           )}
-          <View style={[styles.panelNumber, { backgroundColor: color }]}>
-            <Text style={styles.panelNumberText}>{page + 1} / {total}</Text>
-          </View>
+        </View>
+
+        {/* 페이지 번호 - 사진 아래에 표시 */}
+        <View style={[styles.pageIndicator, { backgroundColor: color }]}>
+          <Text style={styles.pageIndicatorText}>{page + 1} / {total}</Text>
         </View>
       </View>
 
@@ -176,15 +178,17 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 3,
   },
-  panelNumber: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+  pageIndicator: {
+    marginTop: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
     borderRadius: 999,
   },
-  panelNumberText: { color: colors.white, fontSize: 12, fontWeight: '700' },
+  pageIndicatorText: {
+    color: colors.white,
+    fontSize: 13,
+    fontWeight: '700',
+  },
   nav: {
     flexDirection: 'row',
     justifyContent: 'space-between',

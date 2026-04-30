@@ -32,7 +32,6 @@ export default function NewsListScreen({ navigation }: Props) {
       try {
         setLoading(true);
 
-        // 유저 레벨 조회
         let levelNum = 1;
         if (userEmail) {
           const levelRes = await fetch(`${BASE_URL}/quiz/level/${userEmail}`);
@@ -40,7 +39,6 @@ export default function NewsListScreen({ navigation }: Props) {
           levelNum = levelData.overall_level ?? 1;
         }
 
-        // 뉴스 목록 조회
         const cat = filter === '전체' ? '' : `&category=${encodeURIComponent(filter)}`;
         const res = await fetch(`${BASE_URL}/news/?level=${levelNum}${cat}`);
         const data = await res.json();
@@ -51,9 +49,9 @@ export default function NewsListScreen({ navigation }: Props) {
           cat: a.category,
           summary: a.content ?? '',
           body: [],
-          views: 0,
+          views: a.view_count ?? 0,
           time: formatNewsDate(a.pub_date, 'compact'),
-          level: levelNum === 1 ? '하' : levelNum === 2 ? '중' : '상',
+          level: levelNum === 1 ? 'Lv1' : levelNum === 2 ? 'Lv2' : levelNum === 3 ? 'Lv3' : 'Lv4',
           color: '',
         }));
 
@@ -114,7 +112,7 @@ export default function NewsListScreen({ navigation }: Props) {
             item={item}
             read={readIds.includes(item.id)}
             scrapped={isScrapped(item.id)}
-            onPress={() => navigation.navigate('NewsDetail', { newsId: item.id })}
+            onPress={() => navigation.navigate('NewsDetail', { newsId: item.id, level: item.level })}
             onScrapPress={() => toggleScrap(item.id)}
           />
         )}

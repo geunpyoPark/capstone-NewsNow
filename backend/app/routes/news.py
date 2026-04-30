@@ -17,3 +17,7 @@ async def fetch_fourcut():
 @router.get("/{article_id}")
 async def fetch_news_detail(article_id: int, level: int = 1):
     return await get_news_detail(article_id, level)
+
+@router.patch("/{article_id}/view")
+async def update_view_count(article_id: int):
+    return await increment_view_count(article_id)
