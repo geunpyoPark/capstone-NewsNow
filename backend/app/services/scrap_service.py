@@ -11,6 +11,15 @@ async def save_news_quiz(user_email: str, article_id: int, score: int, total: in
 
 async def save_scrap_word(user_email: str, word: str, definition: str, article_id: int):
     async with AsyncSessionLocal() as session:
+        existing = await session.execute(
+            select(ScrapWord).where(
+                ScrapWord.user_email == user_email,
+                ScrapWord.word == word,
+                ScrapWord.article_id == article_id,
+            )
+        )
+        if existing.scalar_one_or_none():
+            return {"message": "이미 저장한 단어예요."}
         scrap = ScrapWord(user_email=user_email, word=word, definition=definition, article_id=article_id)
         session.add(scrap)
         await session.commit()
@@ -26,10 +35,18 @@ async def save_scrap_article(user_email: str, article_id: int):
 async def get_scrap_words(user_email: str):
     async with AsyncSessionLocal() as session:
         result = await session.execute(
-            select(ScrapWord).where(ScrapWord.user_email == user_email)
+            select(ScrapWord).where(ScrapWord.user_email == user_email).order_by(ScrapWord.created_at.desc())
         )
         words = result.scalars().all()
-        return [{"id": w.id, "word": w.word, "definition": w.definition} for w in words]
+        return [
+            {
+                "id": w.id,
+                "word": w.word,
+                "definition": w.definition,
+                "article_id": w.article_id,
+            }
+            for w in words
+        ]
 
 async def get_scrap_articles(user_email: str):
     async with AsyncSessionLocal() as session:

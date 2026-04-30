@@ -25,6 +25,7 @@ export default function MyPageScreen({ navigation }: Props) {
     selectedCategories,
     readIds,
     scrappedIds,
+    scrappedWords,
     solvedQuizIds,
     catXp,
     logout,
@@ -32,22 +33,22 @@ export default function MyPageScreen({ navigation }: Props) {
 
   const stats = useMemo(() => ({
     read: readIds.length,
-    scrapped: scrappedIds.length,
+    scrapped: scrappedIds.length + scrappedWords.length,
     solved: solvedQuizIds.length,
-  }), [readIds, scrappedIds, solvedQuizIds]);
+  }), [readIds, scrappedIds, scrappedWords.length, solvedQuizIds]);
 
   // 각 폴더별 실제 스크랩 개수 계산
   const folderCounts = useMemo(() => {
     const scrappedNews = NEWS_DATA.filter(n => scrappedIds.includes(n.id));
     return SCRAP_FOLDERS.reduce<Record<string, number>>((acc, f) => {
       if (f.kind === 'word') {
-        acc[f.id] = 0;
+        acc[f.id] = scrappedWords.length;
         return acc;
       }
       acc[f.id] = scrappedNews.filter(n => f.categories.includes(n.cat)).length;
       return acc;
     }, {});
-  }, [scrappedIds]);
+  }, [scrappedIds, scrappedWords.length]);
 
   const visibleCategories = selectedCategories.length ? selectedCategories : MAIN_CATEGORIES;
 

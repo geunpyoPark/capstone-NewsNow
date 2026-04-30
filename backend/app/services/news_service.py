@@ -2,11 +2,73 @@ from sqlalchemy import select, desc
 from app.database import AsyncSessionLocal
 from app.models.news import NewsArticle, ArticleVersion, ArticleAsset, ComicStoryboard
 
+
+def _normalize_category_for_query(category: str | None):
+    if not category:
+        return None
+    mapping = {
+        "IT/과학": "IT과학",
+    }
+    return mapping.get(category, category)
+
+
+def _display_category(category: str | None):
+    if not category:
+        return "일반"
+    mapping = {
+        "IT과학": "IT/과학",
+    }
+    return mapping.get(category, category)
+
+
+def _resolve_highlights_by_level(highlights, level: int):
+    if not highlights:
+        return []
+
+    if isinstance(highlights, dict):
+        level_key = f"level_{level}"
+        selected = highlights.get(level_key)
+        if isinstance(selected, list):
+            return selected
+
+        # Backward compatibility for partial/mixed stored payloads
+        fallback = highlights.get("level_1")
+        if isinstance(fallback, list):
+            return fallback
+        return []
+
+    if isinstance(highlights, list):
+        return highlights
+
+    return []
+
+
+def _resolve_quizzes_by_level(quizzes, level: int):
+    if not quizzes:
+        return []
+
+    if isinstance(quizzes, dict):
+        level_key = f"level_{level}"
+        selected = quizzes.get(level_key)
+        if isinstance(selected, list):
+            return selected
+
+        fallback = quizzes.get("level_1")
+        if isinstance(fallback, list):
+            return fallback
+        return []
+
+    if isinstance(quizzes, list):
+        return quizzes
+
+    return []
+
 async def get_news_list(category: str = None, level: int = 1):
     async with AsyncSessionLocal() as session:
+        normalized_category = _normalize_category_for_query(category)
         if category:
             result = await session.execute(
-                select(NewsArticle).where(NewsArticle.category == category)
+                select(NewsArticle).where(NewsArticle.category == normalized_category)
             )
         else:
             result = await session.execute(select(NewsArticle))
@@ -23,7 +85,7 @@ async def get_news_list(category: str = None, level: int = 1):
             news_list.append({
                 "id": a.id,
                 "title": a.title,
-                "category": a.category,
+                "category": _display_category(a.category),
                 "pub_date": a.pub_date,
                 "comic_path": a.comic_path,
                 "content": v.levels.get(f"level_{level}", "") if v else ""
@@ -48,12 +110,12 @@ async def get_news_detail(article_id: int, level: int = 1):
         return {
             "id": article.id,
             "title": article.title,
-            "category": article.category,
+            "category": _display_category(article.category),
             "pub_date": article.pub_date,
             "comic_path": article.comic_path,
             "content": v.levels.get(f"level_{level}", "") if v else "",
-            "quizzes": a.quizzes if a else [],
-            "highlights": a.highlights if a else []
+            "quizzes": _resolve_quizzes_by_level(a.quizzes, level) if a else [],
+            "highlights": _resolve_highlights_by_level(a.highlights, level) if a else []
         }
 
 async def get_fourcut_list():
@@ -69,7 +131,7 @@ async def get_fourcut_list():
             {
                 "id": article.id,
                 "title": article.title,
-                "category": article.category,
+                "category": _display_category(article.category),
                 "pub_date": article.pub_date,
                 "comic_path": comic.comic_path,
             }
