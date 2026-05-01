@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -11,12 +11,16 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { colors } from '../theme';
-import { NEWS_DATA } from '../data/news';
+import { useFocusEffect } from '@react-navigation/native';
+import { colors, categoryColor, Level } from '../theme';
+import { NewsItem } from '../data/news';
 import { useAppContext, FONT_SCALE_LABEL, FontScale } from '../context/AppContext';
 import StripePlaceholder from '../components/StripePlaceholder';
 import LevelBadge from '../components/LevelBadge';
+import { formatNewsDate } from '../utils/date';
+import { API_BASE_URL } from '../config/api';
 
 type Props = {
   navigation: any;
@@ -66,13 +70,68 @@ export default function HomeScreen({ navigation }: Props) {
     return at > 0 ? userEmail.slice(0, at) : userEmail;
   }, [userName, userEmail]);
 
+  // API 뉴스 데이터
+  const [apiNews, setApiNews] = useState<NewsItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadNews = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      let levelNum = 2;
+      let categoryLevels: Record<string, number> = {};
+      if (userEmail) {
+        try {
+          const levelRes = await fetch(`${API_BASE_URL}/quiz/level/${userEmail}`);
+          const levelData = await levelRes.json();
+          levelNum = levelData.overall_level ?? 2;
+          categoryLevels = levelData.categories ?? {};
+        } catch {}
+      }
+
+      const res = await fetch(`${API_BASE_URL}/news/?level=${levelNum}`);
+      const data = await res.json();
+
+      const toDisplayLevel = (n: number): Level => {
+        if (n <= 1) return '하';
+        if (n <= 3) return '중';
+        return '상';
+      };
+
+      const mapped: NewsItem[] = (data as any[]).map(a => ({
+        id: String(a.id),
+        title: a.title,
+        cat: a.category,
+        summary: a.content ?? '',
+        body: [],
+        views: a.view_count ?? 0,
+        time: formatNewsDate(a.pub_date, 'compact'),
+        level: toDisplayLevel(categoryLevels[a.category] ?? levelNum),
+        color: categoryColor(a.category),
+      }));
+
+      setApiNews(mapped);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }, [userEmail]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadNews();
+    }, [loadNews]),
+  );
+
   // 추천 뉴스: 관심 카테고리 기준 최대 4개. 부족하면 전체에서 채움.
   const recommended = useMemo(() => {
-    const rec = NEWS_DATA.filter(n =>
+    if (apiNews.length === 0) return [];
+    const rec = apiNews.filter(n =>
       selectedCategories.some(c => n.cat === c || n.cat.includes(c) || c.includes(n.cat))
     );
-    return rec.length >= 2 ? rec.slice(0, 4) : NEWS_DATA.slice(0, 4);
-  }, [selectedCategories]);
+    return rec.length >= 2 ? rec.slice(0, 4) : apiNews.slice(0, 4);
+  }, [apiNews, selectedCategories]);
   const recommendedLoop = useMemo(() => {
     if (recommended.length <= 1) return recommended;
     return [...recommended, recommended[0]];
@@ -80,8 +139,8 @@ export default function HomeScreen({ navigation }: Props) {
 
   // 오늘의 인기 뉴스: 조회수 상위 5개
   const popular = useMemo(
-    () => [...NEWS_DATA].sort((a, b) => b.views - a.views).slice(0, 5),
-    [],
+    () => [...apiNews].sort((a, b) => b.views - a.views).slice(0, 5),
+    [apiNews],
   );
 
   // 슬라이드 자동 이동
@@ -207,55 +266,62 @@ export default function HomeScreen({ navigation }: Props) {
             {catEmojiMain} <Text style={styles.sectionTitleEm}>{catLabel}</Text> 추천 뉴스
           </Text>
 
-          <FlatList
-            ref={slideRef}
-            data={recommendedLoop}
-            keyExtractor={(n, i) => `${n.id}-${i}`}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            snapToInterval={SLIDE_WIDTH}
-            decelerationRate="fast"
-            onMomentumScrollEnd={handleSlideScroll}
-            style={styles.slideList}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={() => navigation.navigate('NewsDetail', { newsId: item.id })}
-                style={[styles.slideCard, { width: SLIDE_WIDTH }]}
-              >
-                <StripePlaceholder
-                  color={item.color}
-                  label={item.title}
-                  style={styles.slideThumb}
-                />
-                <View style={styles.slideBody}>
-                  <Text style={styles.slideCat}>{item.cat}</Text>
-                  <Text style={styles.slideTitle} numberOfLines={2}>
-                    {item.title}
-                  </Text>
-                  <View style={styles.slideMeta}>
-                    <LevelBadge level={item.level} />
-                    <Text style={styles.metaText}>
-                      👁 {formatViews(item.views)}
-                    </Text>
-                    <Text style={styles.metaTimeDot}>·</Text>
-                    <Text style={styles.metaText}>{item.time}</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            )}
-          />
-
-          {/* 슬라이드 인디케이터 */}
-          <View style={styles.dots}>
-            {recommended.map((_, i) => (
-              <View
-                key={i}
-                style={[styles.dot, i === slideIdx && styles.dotActive]}
+          {loading && apiNews.length === 0 ? (
+            <View style={styles.slideLoading}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          ) : (
+            <>
+              <FlatList
+                ref={slideRef}
+                data={recommendedLoop}
+                keyExtractor={(n, i) => `${n.id}-${i}`}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                snapToInterval={SLIDE_WIDTH}
+                decelerationRate="fast"
+                onMomentumScrollEnd={handleSlideScroll}
+                style={styles.slideList}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={() => navigation.navigate('NewsDetail', { newsId: item.id })}
+                    style={[styles.slideCard, { width: SLIDE_WIDTH }]}
+                  >
+                    <StripePlaceholder
+                      color={item.color}
+                      label={item.title}
+                      style={styles.slideThumb}
+                    />
+                    <View style={styles.slideBody}>
+                      <Text style={styles.slideCat}>{item.cat}</Text>
+                      <Text style={styles.slideTitle} numberOfLines={2}>
+                        {item.title}
+                      </Text>
+                      <View style={styles.slideMeta}>
+                        <LevelBadge level={item.level} />
+                        <Text style={styles.metaText}>
+                          👁 {formatViews(item.views)}
+                        </Text>
+                        <Text style={styles.metaTimeDot}>·</Text>
+                        <Text style={styles.metaText}>{item.time}</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                )}
               />
-            ))}
-          </View>
+              {/* 슬라이드 인디케이터 */}
+              <View style={styles.dots}>
+                {recommended.map((_item, i) => (
+                  <View
+                    key={i}
+                    style={[styles.dot, i === slideIdx && styles.dotActive]}
+                  />
+                ))}
+              </View>
+            </>
+          )}
         </View>
 
         {/* 오늘의 인기 뉴스 */}
@@ -411,6 +477,7 @@ const styles = StyleSheet.create({
   sectionTitleEm: { color: colors.primary },
 
   /* Slide */
+  slideLoading: { height: 200, alignItems: 'center', justifyContent: 'center' },
   slideList: { marginHorizontal: -20, paddingHorizontal: 20 },
   slideCard: {
     backgroundColor: colors.white,

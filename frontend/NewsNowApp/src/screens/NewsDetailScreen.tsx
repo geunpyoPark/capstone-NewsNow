@@ -88,7 +88,10 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
     );
   }
 
-  const color = categoryColor(item.category);
+  const category = typeof item.category === 'string' && item.category.trim()
+    ? item.category
+    : '기타';
+  const color = categoryColor(category);
   const quiz = item.quizzes?.[0] ?? null;
   const scrapped = isScrapped(String(newsId));
   const highlights = Array.isArray(item.highlights) ? item.highlights : [];
@@ -188,7 +191,7 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.catRow}>
           <View style={[styles.catPill, { backgroundColor: color }]}>
-            <Text style={styles.catPillText}>{item.category}</Text>
+            <Text style={styles.catPillText}>{category}</Text>
           </View>
           <LevelBadge level={level ?? item.level ?? '중'} />
         </View>
