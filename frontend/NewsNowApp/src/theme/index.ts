@@ -74,8 +74,8 @@ export const radii = {
 };
 
 // 카테고리명 → 색상 매핑
-export const categoryColor = (cat: string): string => {
-  const key = cat.replace(/\s/g, '');
+export const categoryColor = (cat?: string): string => {
+  const key = (cat ?? '').replace(/\s/g, '');
   if (key.includes('정치')) return colors.catPolitics;
   if (key.includes('경제') || key.includes('금융')) return colors.catEconomy;
   if (key.includes('사회')) return colors.catSociety;
