@@ -4,6 +4,7 @@ import { Level } from '../theme';
 
 type Props = {
   level: Level;
+  label?: string;
   size?: 'sm' | 'md';
   style?: ViewStyle;
 };
@@ -15,7 +16,7 @@ const LEVEL_STYLE: Record<Level, { bg: string; color: string }> = {
   '상': { bg: '#FFF5F5', color: '#C53030' },
 };
 
-export default function LevelBadge({ level, size = 'sm', style }: Props) {
+export default function LevelBadge({ level, label, size = 'sm', style }: Props) {
   const s = LEVEL_STYLE[level] ?? LEVEL_STYLE['중'];
   return (
     <View
@@ -27,7 +28,7 @@ export default function LevelBadge({ level, size = 'sm', style }: Props) {
       ]}
     >
       <Text style={[styles.text, size === 'md' && styles.textMd, { color: s.color }]}>
-        {level}
+        {label ?? level}
       </Text>
     </View>
   );
