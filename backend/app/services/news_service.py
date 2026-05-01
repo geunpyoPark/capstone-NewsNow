@@ -21,6 +21,38 @@ def _display_category(category: str | None):
     return mapping.get(category, category)
 
 
+TITLE_REPLACEMENTS_FOR_EASY_LEVELS = [
+    ("[사설]", "[사설]"),
+    ("[칼럼]", "[칼럼]"),
+    ("野", "야당"),
+    ("與", "여당"),
+    ("尹", "윤석열"),
+    ("李", "이재명"),
+    ("韓", "한국"),
+    ("美", "미국"),
+    ("中", "중국"),
+    ("日", "일본"),
+    ("北", "북한"),
+    ("道", "도"),
+    ("軍", "군"),
+    ("檢", "검찰"),
+    ("警", "경찰"),
+]
+
+
+def _display_title(title: str | None, level: int):
+    if not title:
+        return ""
+    if level > 2:
+        return title
+
+    normalized = title
+    for source, target in TITLE_REPLACEMENTS_FOR_EASY_LEVELS:
+        normalized = normalized.replace(source, target)
+
+    return normalized
+
+
 def _resolve_highlights_by_level(highlights, level: int):
     if not highlights:
         return []
@@ -76,7 +108,7 @@ async def get_news_list(category: str = None, level: int = 1):
 
             news_list.append({
                 "id": a.id,
-                "title": a.title,
+                "title": _display_title(a.title, level),
                 "category": _display_category(a.category),
                 "pub_date": a.pub_date,
                 "comic_path": a.comic_path,
@@ -103,7 +135,7 @@ async def get_news_detail(article_id: int, level: int = 1):
 
         return {
             "id": article.id,
-            "title": article.title,
+            "title": _display_title(article.title, level),
             "category": _display_category(article.category),
             "pub_date": article.pub_date,
             "comic_path": article.comic_path,
