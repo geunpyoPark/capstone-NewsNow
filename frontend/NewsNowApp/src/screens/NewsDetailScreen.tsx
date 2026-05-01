@@ -120,14 +120,16 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
     const regex = new RegExp(`(${uniqueHighlights.map((entry: any) => escapeRegExp(entry.word)).join('|')})`, 'g');
     const segments = content.split(regex).filter(Boolean);
     const definitions = new Map(uniqueHighlights.map((entry: any) => [entry.word, entry.definition]));
+    const highlightedOnce = new Set<string>();
 
     return (
       <Text style={[styles.paragraph, { fontSize: 15 * fontMul, lineHeight: 24 * fontMul }]}>
         {segments.map((segment: string, index: number) => {
           const definition = definitions.get(segment);
-          if (!definition) {
+          if (!definition || highlightedOnce.has(segment)) {
             return <Text key={`${segment}-${index}`}>{segment}</Text>;
           }
+          highlightedOnce.add(segment);
           return (
             <Text
               key={`${segment}-${index}`}
