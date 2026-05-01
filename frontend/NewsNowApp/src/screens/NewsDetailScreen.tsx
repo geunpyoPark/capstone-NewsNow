@@ -56,7 +56,10 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
         setItem(data);
         markRead(String(newsId));
 
+<<<<<<< HEAD
+=======
         // 조회수 증가
+>>>>>>> origin/main
         await fetch(`${BASE_URL}/news/${newsId}/view`, { method: 'PATCH' });
       } catch (e) {
         console.error(e);
@@ -88,6 +91,67 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
   const color = categoryColor(item.category);
   const quiz = item.quizzes?.[0] ?? null;
   const scrapped = isScrapped(String(newsId));
+<<<<<<< HEAD
+  const highlights = Array.isArray(item.highlights) ? item.highlights : [];
+
+  const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  const renderHighlightedContent = () => {
+    const content = item.content ?? '';
+    if (!content || highlights.length === 0) {
+      return (
+        <Text style={[styles.paragraph, { fontSize: 15 * fontMul, lineHeight: 24 * fontMul }]}>
+          {content}
+        </Text>
+      );
+    }
+
+    const uniqueHighlights = highlights
+      .filter((entry: any) => entry?.word && content.includes(entry.word))
+      .sort((a: any, b: any) => b.word.length - a.word.length);
+
+    if (uniqueHighlights.length === 0) {
+      return (
+        <Text style={[styles.paragraph, { fontSize: 15 * fontMul, lineHeight: 24 * fontMul }]}>
+          {content}
+        </Text>
+      );
+    }
+
+    const regex = new RegExp(`(${uniqueHighlights.map((entry: any) => escapeRegExp(entry.word)).join('|')})`, 'g');
+    const segments = content.split(regex).filter(Boolean);
+    const definitions = new Map(uniqueHighlights.map((entry: any) => [entry.word, entry.definition]));
+    const highlightedOnce = new Set<string>();
+
+    return (
+      <Text style={[styles.paragraph, { fontSize: 15 * fontMul, lineHeight: 24 * fontMul }]}>
+        {segments.map((segment: string, index: number) => {
+          const definition = definitions.get(segment);
+          if (!definition || highlightedOnce.has(segment)) {
+            return <Text key={`${segment}-${index}`}>{segment}</Text>;
+          }
+          highlightedOnce.add(segment);
+          return (
+            <Text
+              key={`${segment}-${index}`}
+              style={styles.highlightedWord}
+              onPress={() => setSelectedHighlight({ word: segment, definition })}
+            >
+              {segment}
+            </Text>
+          );
+        })}
+      </Text>
+    );
+  };
+
+  const handleScrapWord = async () => {
+    if (!selectedHighlight) return;
+    const result = await scrapWord(selectedHighlight.word, selectedHighlight.definition, Number(newsId));
+    Alert.alert(result.ok ? '단어 저장' : '저장 실패', result.message);
+  };
+=======
+>>>>>>> origin/main
 
   const handleSubmitQuiz = () => {
     if (selectedOption === null || !quiz) return;
@@ -125,7 +189,11 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
           <View style={[styles.catPill, { backgroundColor: color }]}>
             <Text style={styles.catPillText}>{item.category}</Text>
           </View>
+<<<<<<< HEAD
+          <LevelBadge level={level ?? item.level ?? '중'} />
+=======
           <LevelBadge level={level ?? 'Lv1'} />
+>>>>>>> origin/main
         </View>
 
         <Text style={styles.title}>{item.title}</Text>
