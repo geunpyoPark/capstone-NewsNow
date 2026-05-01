@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   FlatList,
   ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { colors } from '../theme';
 import { CAT_FILTERS, NewsItem } from '../data/news';
 import { useAppContext } from '../context/AppContext';
@@ -27,46 +28,52 @@ export default function NewsListScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const { readIds, isScrapped, toggleScrap, userEmail } = useAppContext();
 
-  useEffect(() => {
-    const loadNews = async () => {
-      try {
-        setLoading(true);
+  const loadNews = useCallback(async () => {
+    try {
+      setLoading(true);
 
-        // 유저 레벨 조회
-        let levelNum = 1;
-        if (userEmail) {
-          const levelRes = await fetch(`${BASE_URL}/quiz/level/${userEmail}`);
-          const levelData = await levelRes.json();
-          levelNum = levelData.overall_level ?? 1;
-        }
+      let levelNum = 2;
+      let categoryLevels: Record<string, number> = {};
 
-        // 뉴스 목록 조회
-        const cat = filter === '전체' ? '' : `&category=${encodeURIComponent(filter)}`;
-        const res = await fetch(`${BASE_URL}/news/?level=${levelNum}${cat}`);
-        const data = await res.json();
+      if (userEmail) {
+        const levelRes = await fetch(`${BASE_URL}/quiz/level/${userEmail}`);
+        const levelData = await levelRes.json();
+        levelNum = levelData.overall_level ?? 2;
+        categoryLevels = levelData.categories ?? {};
+      }
 
-        const mapped: NewsItem[] = data.map((a: any) => ({
+      const cat = filter === '전체' ? '' : `&category=${encodeURIComponent(filter)}`;
+      const res = await fetch(`${BASE_URL}/news/?level=${levelNum}${cat}`);
+      const data = await res.json();
+
+      const mapped: NewsItem[] = data.map((a: any) => {
+        const catLevel = categoryLevels[a.category] ?? 2;
+        return {
           id: String(a.id),
           title: a.title,
           cat: a.category,
           summary: a.content ?? '',
           body: [],
-          views: 0,
+          views: a.view_count ?? 0,
           time: formatNewsDate(a.pub_date, 'compact'),
-          level: levelNum === 1 ? '하' : levelNum === 2 ? '중' : '상',
+          level: catLevel === 1 ? 'Lv1' : catLevel === 2 ? 'Lv2' : catLevel === 3 ? 'Lv3' : 'Lv4',
           color: '',
-        }));
+        };
+      });
 
-        setNewsList(mapped);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadNews();
+      setNewsList(mapped);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   }, [filter, userEmail]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadNews();
+    }, [loadNews])
+  );
 
   const filtered = useMemo(() => {
     if (filter === '전체') return newsList;
@@ -114,7 +121,7 @@ export default function NewsListScreen({ navigation }: Props) {
             item={item}
             read={readIds.includes(item.id)}
             scrapped={isScrapped(item.id)}
-            onPress={() => navigation.navigate('NewsDetail', { newsId: item.id })}
+            onPress={() => navigation.navigate('NewsDetail', { newsId: item.id, level: item.level })}
             onScrapPress={() => toggleScrap(item.id)}
           />
         )}

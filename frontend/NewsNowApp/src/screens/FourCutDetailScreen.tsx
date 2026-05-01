@@ -78,18 +78,10 @@ export default function FourCutDetailScreen({ navigation, route }: Props) {
       </View>
 
       <View style={styles.header}>
-        <View style={styles.titleCard}>
-          <View style={styles.titleCardTop}>
-            <View style={[styles.catPill, { backgroundColor: color }]}>
-              <Text style={styles.catPillText}>{item.category}</Text>
-            </View>
-            <View style={styles.storyTag}>
-              <Text style={styles.storyTagText}>이야기 요약</Text>
-            </View>
-          </View>
-          <Text style={styles.title}>{item.title}</Text>
-          <Text style={styles.titleHint}>아래 4컷에서 핵심 장면만 순서대로 보여줍니다.</Text>
+        <View style={[styles.catPill, { backgroundColor: color }]}>
+          <Text style={styles.catPillText}>{item.category}</Text>
         </View>
+        <Text style={styles.title}>{item.title}</Text>
       </View>
 
       <View style={styles.frameWrap}>
@@ -113,6 +105,11 @@ export default function FourCutDetailScreen({ navigation, route }: Props) {
               resizeMode="cover"
             />
           )}
+        </View>
+
+        {/* 페이지 번호 - 사진 아래에 표시 */}
+        <View style={[styles.pageIndicator, { backgroundColor: color }]}>
+          <Text style={styles.pageIndicatorText}>{page + 1} / {total}</Text>
         </View>
       </View>
 
@@ -162,24 +159,6 @@ const styles = StyleSheet.create({
   backIcon: { fontSize: 28, color: colors.textPrimary, width: 32 },
   topTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
   header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
-  titleCard: {
-    backgroundColor: colors.white,
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 1,
-  },
-  titleCardTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
   catPill: {
     alignSelf: 'flex-start',
     paddingHorizontal: 10,
@@ -188,24 +167,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   catPillText: { color: colors.white, fontWeight: '700', fontSize: 12 },
-  storyTag: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    backgroundColor: colors.bgSoft,
-  },
-  storyTagText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textSecondary,
-  },
   title: { fontSize: 20, fontWeight: '800', color: colors.textPrimary, lineHeight: 28 },
-  titleHint: {
-    marginTop: 10,
-    fontSize: 12,
-    lineHeight: 17,
-    color: colors.textSecondary,
-  },
   frameWrap: { alignItems: 'center', paddingHorizontal: 20, flex: 1, justifyContent: 'center' },
   frame: {
     borderRadius: 20,
@@ -215,6 +177,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 3,
+  },
+  pageIndicator: {
+    marginTop: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  pageIndicatorText: {
+    color: colors.white,
+    fontSize: 13,
+    fontWeight: '700',
   },
   nav: {
     flexDirection: 'row',

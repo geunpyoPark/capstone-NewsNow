@@ -24,44 +24,36 @@ def _display_category(category: str | None):
 def _resolve_highlights_by_level(highlights, level: int):
     if not highlights:
         return []
-
     if isinstance(highlights, dict):
         level_key = f"level_{level}"
         selected = highlights.get(level_key)
         if isinstance(selected, list):
             return selected
-
-        # Backward compatibility for partial/mixed stored payloads
         fallback = highlights.get("level_1")
         if isinstance(fallback, list):
             return fallback
         return []
-
     if isinstance(highlights, list):
         return highlights
-
     return []
 
 
 def _resolve_quizzes_by_level(quizzes, level: int):
     if not quizzes:
         return []
-
     if isinstance(quizzes, dict):
         level_key = f"level_{level}"
         selected = quizzes.get(level_key)
         if isinstance(selected, list):
             return selected
-
         fallback = quizzes.get("level_1")
         if isinstance(fallback, list):
             return fallback
         return []
-
     if isinstance(quizzes, list):
         return quizzes
-
     return []
+
 
 async def get_news_list(category: str = None, level: int = 1):
     async with AsyncSessionLocal() as session:
@@ -88,10 +80,12 @@ async def get_news_list(category: str = None, level: int = 1):
                 "category": _display_category(a.category),
                 "pub_date": a.pub_date,
                 "comic_path": a.comic_path,
-                "content": v.levels.get(f"level_{level}", "") if v else ""
+                "content": v.levels.get(f"level_{level}", "") if v else "",
+                "view_count": a.view_count or 0,
             })
 
         return news_list
+
 
 async def get_news_detail(article_id: int, level: int = 1):
     async with AsyncSessionLocal() as session:
@@ -118,6 +112,7 @@ async def get_news_detail(article_id: int, level: int = 1):
             "highlights": _resolve_highlights_by_level(a.highlights, level) if a else []
         }
 
+
 async def get_fourcut_list():
     async with AsyncSessionLocal() as session:
         result = await session.execute(
@@ -137,3 +132,13 @@ async def get_fourcut_list():
             }
             for article, comic in rows
         ]
+
+
+async def increment_view_count(article_id: int):
+    async with AsyncSessionLocal() as session:
+        article = await session.get(NewsArticle, article_id)
+        if article:
+            article.view_count = (article.view_count or 0) + 1
+            await session.commit()
+            return {"view_count": article.view_count}
+        return {"view_count": 0}

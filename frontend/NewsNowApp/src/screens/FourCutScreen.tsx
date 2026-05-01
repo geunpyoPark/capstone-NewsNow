@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   SafeAreaView,
+  ScrollView,
   FlatList,
   TouchableOpacity,
   Image,
 } from 'react-native';
 import { colors, categoryColor } from '../theme';
+import { CAT_FILTERS } from '../data/news';
+import CategoryPill from '../components/CategoryPill';
 
 const BASE_URL = 'https://mainrepo-production-4ca1.up.railway.app';
 
@@ -18,6 +21,7 @@ type Props = {
 
 export default function FourCutScreen({ navigation }: Props) {
   const [fourCutList, setFourCutList] = useState<any[]>([]);
+  const [filter, setFilter] = useState<string>('전체');
 
   useEffect(() => {
     const loadFourCut = async () => {
@@ -33,14 +37,37 @@ export default function FourCutScreen({ navigation }: Props) {
     loadFourCut();
   }, []);
 
+  const filtered = useMemo(() => {
+    if (filter === '전체') return fourCutList;
+    return fourCutList.filter(n => n.category === filter);
+  }, [filter, fourCutList]);
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>네컷뉴스</Text>
         <Text style={styles.subtitle}>긴 이야기를 4컷으로 가볍게 📖</Text>
       </View>
+
+      <View style={styles.filterWrap}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterRow}
+        >
+          {CAT_FILTERS.map(f => (
+            <CategoryPill
+              key={f}
+              label={f}
+              active={filter === f}
+              onPress={() => setFilter(f)}
+            />
+          ))}
+        </ScrollView>
+      </View>
+
       <FlatList
-        data={fourCutList}
+        data={filtered}
         keyExtractor={item => String(item.id)}
         contentContainerStyle={styles.grid}
         numColumns={2}
@@ -63,9 +90,6 @@ export default function FourCutScreen({ navigation }: Props) {
                 ) : (
                   <Text style={styles.thumbEmoji}>📰</Text>
                 )}
-                <View style={styles.fourCutBadge}>
-                  <Text style={styles.fourCutBadgeText}>4컷</Text>
-                </View>
               </View>
               <View style={styles.body}>
                 <Text style={[styles.cat, { color }]}>{item.category}</Text>
@@ -77,6 +101,11 @@ export default function FourCutScreen({ navigation }: Props) {
             </TouchableOpacity>
           );
         }}
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <Text style={styles.emptyText}>해당 카테고리 뉴스가 없어요</Text>
+          </View>
+        }
       />
     </SafeAreaView>
   );
@@ -89,6 +118,8 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 10 },
   title: { fontSize: 22, fontWeight: '700', color: colors.textPrimary },
   subtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },
+  filterWrap: { height: 72, justifyContent: 'center' },
+  filterRow: { paddingHorizontal: 20, paddingVertical: 0, alignItems: 'center' },
   grid: { paddingHorizontal: 20, paddingBottom: 40, paddingTop: 8 },
   row: { justifyContent: 'space-between', marginBottom: CARD_GAP },
   card: {
@@ -112,16 +143,6 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   thumbEmoji: { fontSize: 40 },
-  fourCutBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-  },
-  fourCutBadgeText: { fontSize: 10, fontWeight: '700', color: colors.textPrimary },
   body: { padding: 12 },
   cat: { fontSize: 11, fontWeight: '700', marginBottom: 6 },
   cardTitle: {
@@ -132,4 +153,6 @@ const styles = StyleSheet.create({
     minHeight: 38,
   },
   meta: { fontSize: 10, color: colors.textMuted, marginTop: 8 },
+  empty: { paddingVertical: 60, alignItems: 'center' },
+  emptyText: { color: colors.textSecondary, fontSize: 14 },
 });

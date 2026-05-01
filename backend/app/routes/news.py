@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from app.services.news_service import get_news_list, get_news_detail, get_fourcut_list
+from app.services.news_service import get_news_list, get_news_detail, get_fourcut_list, increment_view_count
 
 router = APIRouter(prefix="/news", tags=["news"])
 
@@ -17,3 +17,7 @@ async def fetch_fourcut():
 @router.get("/{article_id}")
 async def fetch_news_detail(article_id: int, level: int = 1):
     return await get_news_detail(article_id, level)
+
+@router.patch("/{article_id}/view")
+async def update_view_count(article_id: int):
+    return await increment_view_count(article_id)
