@@ -89,6 +89,8 @@ class NewsAnalyzer:
         - 퀴즈는 각 레벨 본문을 읽은 학생이 바로 풀 수 있어야 한다.
         - 현재 레벨 본문에 실제로 등장하지 않는 단어, 표현, 고유명사로 문제를 내면 안 된다.
         - 특히 vocabulary 퀴즈는 반드시 그 레벨 본문에 실제 등장한 단어만 사용해야 한다.
+        - vocabulary 퀴즈의 정답 단어는 문제 문장(question) 안에 작은따옴표(' ')로 반드시 직접 써라. 예: "글에 나온 '자립'의 뜻은?"
+        - vocabulary 퀴즈에서 정답 단어가 보기의 뜻풀이로만 숨어 있고, question 문장에는 안 나오면 실패로 간주한다.
         - 각 레벨마다 아래 3문항을 따로 만들어라.
         1. vocabulary: 그 레벨 본문에 실제 등장한 핵심 단어 1개를 묻기. (4지선다)
         2. context: 그 레벨 본문에 드러난 인과관계를 묻기. (4지선다)
@@ -150,6 +152,74 @@ class NewsAnalyzer:
             if is_retryable_error(e):
                 raise e # retry가 잡을 수 있게 다시 던짐
             print(f"AI 분석 중 치명적 에러 발생: {e}")
+            return None
+
+    @retry(
+        retry=retry_if_exception(is_retryable_error),
+        wait=wait_random_exponential(multiplier=1, max=120),
+        stop=stop_after_attempt(5),
+        reraise=True,
+        before_sleep=lambda retry_state: print(f"⏳ [API 할당량 초과] {retry_state.next_action.sleep:.1f}초 후 재시도합니다... (시도 {retry_state.attempt_number}/5)")
+    )
+    def regenerate_vocabulary_quiz(self, level_text, highlights, title=""):
+        """문제가 어색하거나 규칙을 어긴 vocabulary 퀴즈 1개만 다시 생성한다."""
+        highlight_lines = []
+        if isinstance(highlights, list):
+            for item in highlights:
+                if not isinstance(item, dict):
+                    continue
+                word = str(item.get("word", "")).strip()
+                definition = str(item.get("definition", "")).strip()
+                if word and definition:
+                    highlight_lines.append(f"- {word}: {definition}")
+
+        highlight_block = "\n".join(highlight_lines) if highlight_lines else "- 사용 가능한 하이라이트 없음"
+        prompt = f"""
+        너는 독해 교육 서비스 'NewsNow'의 시니어 에디터야.
+        아래 [레벨 본문]과 [하이라이트 후보]를 보고 vocabulary 퀴즈 1개만 다시 만들어라.
+
+        [기사 제목]
+        {title}
+
+        [레벨 본문]
+        {level_text}
+
+        [하이라이트 후보]
+        {highlight_block}
+
+        [규칙]
+        - 반드시 레벨 본문에 실제로 등장하는 단어 1개만 정답어로 사용해.
+        - 가능하면 [하이라이트 후보]에 있는 단어를 우선 사용해.
+        - 문제 문장(question) 안에 정답 단어를 작은따옴표(' ')로 직접 넣어.
+        - 선택지는 반드시 4개.
+        - 정답 위치를 고정하지 마. 자연스럽게 섞어.
+        - 오답 3개는 너무 뻔한 장난 답이 아니라, 초등학생이 헷갈릴 수 있는 짧고 그럴듯한 뜻풀이로 만들어.
+        - 각 선택지는 한 문장 길이로 짧게 써.
+        - explanation은 왜 그 뜻이 맞는지 한두 문장으로 설명해.
+
+        [JSON 출력]
+        {{
+          "type": "vocabulary",
+          "question": "...",
+          "options": ["...", "...", "...", "..."],
+          "answer": 0,
+          "explanation": "..."
+        }}
+        """
+
+        try:
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                )
+            )
+            return json.loads(response.text)
+        except Exception as e:
+            if is_retryable_error(e):
+                raise e
+            print(f"vocabulary 퀴즈 재생성 실패: {e}")
             return None
 
     def _detect_article_type(self, title, news_text):

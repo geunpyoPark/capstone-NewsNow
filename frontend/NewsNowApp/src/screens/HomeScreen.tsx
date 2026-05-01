@@ -35,6 +35,17 @@ function formatViews(n: number) {
   return n.toLocaleString();
 }
 
+function toDisplayLevel(n: number): Level {
+  if (n <= 1) return '하';
+  if (n === 2) return '중';
+  return '상';
+}
+
+function toLevelLabel(n: number): string {
+  const normalized = Math.min(4, Math.max(1, Math.round(n || 1)));
+  return `Lv${normalized}`;
+}
+
 export default function HomeScreen({ navigation }: Props) {
   const {
     userEmail,
@@ -73,30 +84,26 @@ export default function HomeScreen({ navigation }: Props) {
   // API 뉴스 데이터
   const [apiNews, setApiNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [categoryLevels, setCategoryLevels] = useState<Record<string, number>>({});
 
   const loadNews = useCallback(async () => {
     try {
       setLoading(true);
 
       let levelNum = 2;
-      let categoryLevels: Record<string, number> = {};
+      let nextCategoryLevels: Record<string, number> = {};
       if (userEmail) {
         try {
           const levelRes = await fetch(`${API_BASE_URL}/quiz/level/${userEmail}`);
           const levelData = await levelRes.json();
           levelNum = levelData.overall_level ?? 2;
-          categoryLevels = levelData.categories ?? {};
+          nextCategoryLevels = levelData.categories ?? {};
         } catch {}
       }
+      setCategoryLevels(nextCategoryLevels);
 
       const res = await fetch(`${API_BASE_URL}/news/?level=${levelNum}`);
       const data = await res.json();
-
-      const toDisplayLevel = (n: number): Level => {
-        if (n <= 1) return '하';
-        if (n <= 3) return '중';
-        return '상';
-      };
 
       const mapped: NewsItem[] = (data as any[]).map(a => ({
         id: String(a.id),
@@ -106,7 +113,7 @@ export default function HomeScreen({ navigation }: Props) {
         body: [],
         views: a.view_count ?? 0,
         time: formatNewsDate(a.pub_date, 'compact'),
-        level: toDisplayLevel(categoryLevels[a.category] ?? levelNum),
+        level: toDisplayLevel(nextCategoryLevels[a.category] ?? levelNum),
         color: categoryColor(a.category),
       }));
 
@@ -286,7 +293,13 @@ export default function HomeScreen({ navigation }: Props) {
                 renderItem={({ item }) => (
                   <TouchableOpacity
                     activeOpacity={0.85}
-                    onPress={() => navigation.navigate('NewsDetail', { newsId: item.id })}
+                    onPress={() =>
+                      navigation.navigate('NewsDetail', {
+                        newsId: item.id,
+                        levelStyle: item.level,
+                        levelLabel: toLevelLabel(categoryLevels[item.cat] ?? 2),
+                      })
+                    }
                     style={[styles.slideCard, { width: SLIDE_WIDTH }]}
                   >
                     <StripePlaceholder
@@ -300,7 +313,10 @@ export default function HomeScreen({ navigation }: Props) {
                         {item.title}
                       </Text>
                       <View style={styles.slideMeta}>
-                        <LevelBadge level={item.level} />
+                        <LevelBadge
+                          level={item.level}
+                          label={toLevelLabel(categoryLevels[item.cat] ?? 2)}
+                        />
                         <Text style={styles.metaText}>
                           👁 {formatViews(item.views)}
                         </Text>
@@ -339,7 +355,13 @@ export default function HomeScreen({ navigation }: Props) {
                   i === popular.length - 1 && styles.popRowLast,
                 ]}
                 activeOpacity={0.7}
-                onPress={() => navigation.navigate('NewsDetail', { newsId: item.id })}
+                onPress={() =>
+                  navigation.navigate('NewsDetail', {
+                    newsId: item.id,
+                    levelStyle: item.level,
+                    levelLabel: toLevelLabel(categoryLevels[item.cat] ?? 2),
+                  })
+                }
               >
                 <View
                   style={[
@@ -365,7 +387,10 @@ export default function HomeScreen({ navigation }: Props) {
                     {item.title}
                   </Text>
                   <View style={styles.popMeta}>
-                    <LevelBadge level={item.level} />
+                    <LevelBadge
+                      level={item.level}
+                      label={toLevelLabel(categoryLevels[item.cat] ?? 2)}
+                    />
                     <Text style={styles.popMetaCat}>{item.cat}</Text>
                     <Text style={styles.metaText}>
                       👁 {formatViews(item.views)}
