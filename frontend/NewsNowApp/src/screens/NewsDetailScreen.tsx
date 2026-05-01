@@ -24,7 +24,7 @@ type Props = {
 };
 
 export default function NewsDetailScreen({ navigation, route }: Props) {
-  const { newsId } = route.params;
+  const { newsId, level } = route.params;
   const {
     markRead,
     toggleScrap,
@@ -61,6 +61,8 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
         const data = await res.json();
         setItem(data);
         markRead(String(newsId));
+
+        await fetch(`${BASE_URL}/news/${newsId}/view`, { method: 'PATCH' });
       } catch (e) {
         console.error(e);
       } finally {
@@ -186,7 +188,7 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
           <View style={[styles.catPill, { backgroundColor: color }]}>
             <Text style={styles.catPillText}>{item.category}</Text>
           </View>
-          <LevelBadge level={item.level ?? '중'} />
+          <LevelBadge level={level ?? item.level ?? '중'} />
         </View>
 
         <Text style={styles.title}>{item.title}</Text>
