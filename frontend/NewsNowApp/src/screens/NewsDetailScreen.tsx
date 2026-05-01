@@ -24,7 +24,7 @@ type Props = {
 };
 
 export default function NewsDetailScreen({ navigation, route }: Props) {
-  const { newsId, level } = route.params;
+  const { newsId, levelStyle, levelLabel } = route.params;
   const {
     markRead,
     toggleScrap,
@@ -173,6 +173,8 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
 
   const isCorrect = showResult && selectedOption === quiz?.answer;
   const xpSignedText = xpDelta > 0 ? `+${xpDelta}` : xpDelta < 0 ? `${xpDelta}` : null;
+  const detailLevelStyle = levelStyle ?? '중';
+  const detailLevelLabel = levelLabel ?? detailLevelStyle;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -193,7 +195,7 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
           <View style={[styles.catPill, { backgroundColor: color }]}>
             <Text style={styles.catPillText}>{category}</Text>
           </View>
-          <LevelBadge level={level ?? item.level ?? '중'} />
+          <LevelBadge level={detailLevelStyle} label={detailLevelLabel} />
         </View>
 
         <Text style={styles.title}>{item.title}</Text>

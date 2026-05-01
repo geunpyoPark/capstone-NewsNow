@@ -22,6 +22,12 @@ type Props = {
   navigation: any;
 };
 
+function toLevelStyle(label: string) {
+  if (label === 'Lv1') return '하';
+  if (label === 'Lv2') return '중';
+  return '상';
+}
+
 export default function NewsListScreen({ navigation }: Props) {
   const [filter, setFilter] = useState<string>('전체');
   const [newsList, setNewsList] = useState<NewsItem[]>([]);
@@ -121,7 +127,13 @@ export default function NewsListScreen({ navigation }: Props) {
             item={item}
             read={readIds.includes(item.id)}
             scrapped={isScrapped(item.id)}
-            onPress={() => navigation.navigate('NewsDetail', { newsId: item.id, level: item.level })}
+            onPress={() =>
+              navigation.navigate('NewsDetail', {
+                newsId: item.id,
+                levelStyle: toLevelStyle(item.level as string),
+                levelLabel: item.level,
+              })
+            }
             onScrapPress={() => toggleScrap(item.id)}
           />
         )}

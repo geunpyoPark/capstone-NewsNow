@@ -11,6 +11,7 @@ from news_analyzer import NewsAnalyzer, is_retryable_error
 from comic_generator import ComicGenerator
 from image_storage import is_cloudinary_configured, upload_image_to_cloudinary
 from highlight_utils import normalize_highlights
+from quiz_utils import normalize_quizzes
 from ai_db import (
     ensure_comic_storyboards_table,
     get_db_connection,
@@ -429,6 +430,16 @@ def generate_news_comic_result(
     analysis["highlights"] = normalize_highlights(
         analysis.get("levels", {}),
         analysis.get("highlights", {}),
+    )
+    analysis["quizzes"] = normalize_quizzes(
+        analysis.get("levels", {}),
+        analysis.get("quizzes", {}),
+        analysis.get("highlights", {}),
+        vocabulary_quiz_builder=lambda level_text, level_highlights: analyzer.regenerate_vocabulary_quiz(
+            level_text,
+            level_highlights,
+            title=title,
+        ),
     )
 
     levels = analysis.get("levels", {})

@@ -10,6 +10,7 @@ HIGHLIGHT_STOPWORDS = {
     "문제", "결과", "영향", "사람", "정부", "우리", "한국", "미국", "중국", "일본",
     "때문", "이유", "정리", "설명", "발표", "기자", "보도", "가장", "여러", "일부",
     "사용", "진행", "계속", "가운데", "가능", "기준", "정책", "사회", "경제",
+    "필요", "도움", "계획", "지역", "사람들", "정부를", "준비", "이유를", "사람들도",
 }
 HIGHLIGHT_PRIORITY_TERMS = (
     "금리", "물가", "환율", "관세", "수출", "수입", "무역", "경기", "예산", "복지",
@@ -17,17 +18,41 @@ HIGHLIGHT_PRIORITY_TERMS = (
     "인공지능", "AI", "플랫폼", "알고리즘", "백신", "바이오", "기후", "탄소", "에너지",
     "전력", "발전소", "우주", "로봇", "데이터", "개인정보", "추경", "대출", "주택",
 )
+KOREAN_PARTICLE_SUFFIXES = (
+    "으로는", "에서는", "에게는", "까지는", "부터는", "에서는", "에게서",
+    "으로", "에서", "에게", "한테", "까지", "부터", "처럼", "보다",
+    "은", "는", "이", "가", "을", "를", "와", "과", "도", "만", "에", "의",
+)
+BAD_ENDINGS = (
+    "합니다", "했습니다", "됩니다", "있습니다", "없습니다", "입니다", "였다", "했다",
+    "하다", "되다", "된다", "있다", "없다", "하며", "하면", "해서", "되고", "이며",
+)
 
 
 def _normalize_word_for_match(word):
     return re.sub(r"\s+", "", str(word or "")).lower()
 
 
+def clean_highlight_word(word):
+    cleaned = re.sub(r"^[^A-Za-z가-힣0-9]+|[^A-Za-z가-힣0-9]+$", "", str(word or "").strip())
+    if not cleaned:
+        return ""
+
+    for suffix in sorted(KOREAN_PARTICLE_SUFFIXES, key=len, reverse=True):
+        if cleaned.endswith(suffix) and len(cleaned) - len(suffix) >= 2:
+            cleaned = cleaned[: -len(suffix)]
+            break
+
+    return cleaned.strip()
+
+
 def _is_valid_highlight_word(word, level_text):
-    word = str(word or "").strip()
+    word = clean_highlight_word(word)
     if len(word) < 2:
         return False
     if word in HIGHLIGHT_STOPWORDS:
+        return False
+    if any(word.endswith(ending) for ending in BAD_ENDINGS):
         return False
     if re.fullmatch(r"[0-9]+", word):
         return False
@@ -43,6 +68,19 @@ def _fallback_definition(word, level_text):
     return f'"{word}"는 이 기사에서 핵심 흐름을 이해하는 데 도움이 되는 말이에요.'
 
 
+def normalize_definition_word(definition, original_word, cleaned_word):
+    text = str(definition or "").strip()
+    original = str(original_word or "").strip()
+    cleaned = str(cleaned_word or "").strip()
+
+    if not text:
+        return ""
+    if not original or not cleaned or original == cleaned:
+        return text
+
+    return text.replace(f'"{original}"', f'"{cleaned}"').replace(f"'{original}'", f"'{cleaned}'").replace(original, cleaned)
+
+
 def _extract_highlight_candidates(level_text):
     words = re.findall(r"[A-Za-z][A-Za-z0-9+-]{1,}|[가-힣]{2,}", str(level_text or ""))
     seen = set()
@@ -50,13 +88,14 @@ def _extract_highlight_candidates(level_text):
     others = []
 
     for word in words:
-        if word in seen or not _is_valid_highlight_word(word, level_text):
+        cleaned = clean_highlight_word(word)
+        if cleaned in seen or not _is_valid_highlight_word(cleaned, level_text):
             continue
-        seen.add(word)
-        if any(term.lower() in word.lower() for term in HIGHLIGHT_PRIORITY_TERMS):
-            prioritized.append(word)
-        else:
-            others.append(word)
+        seen.add(cleaned)
+        if any(term.lower() in cleaned.lower() for term in HIGHLIGHT_PRIORITY_TERMS):
+            prioritized.append(cleaned)
+        elif len(cleaned) >= 3:
+            others.append(cleaned)
 
     others.sort(key=lambda item: (-len(item), item))
     return prioritized + others
@@ -77,7 +116,7 @@ def normalize_highlights(levels, highlights):
             for item in raw_items:
                 if not isinstance(item, dict):
                     continue
-                word = str(item.get("word", "")).strip()
+                word = clean_highlight_word(item.get("word", ""))
                 definition = str(item.get("definition", "")).strip()
                 if not _is_valid_highlight_word(word, level_text):
                     continue
@@ -87,7 +126,11 @@ def normalize_highlights(levels, highlights):
                 seen_words.add(normalized_word)
                 cleaned.append({
                     "word": word,
-                    "definition": definition or _fallback_definition(word, level_text),
+                    "definition": normalize_definition_word(
+                        definition or _fallback_definition(word, level_text),
+                        item.get("word", ""),
+                        word,
+                    ),
                 })
                 if len(cleaned) >= HIGHLIGHT_MAX_COUNT:
                     break
@@ -96,6 +139,8 @@ def normalize_highlights(levels, highlights):
             for candidate in _extract_highlight_candidates(level_text):
                 normalized_candidate = _normalize_word_for_match(candidate)
                 if normalized_candidate in seen_words:
+                    continue
+                if not any(term.lower() in candidate.lower() for term in HIGHLIGHT_PRIORITY_TERMS):
                     continue
                 seen_words.add(normalized_candidate)
                 cleaned.append({
