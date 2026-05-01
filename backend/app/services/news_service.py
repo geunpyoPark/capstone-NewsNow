@@ -27,8 +27,10 @@ TITLE_REPLACEMENTS_FOR_EASY_LEVELS = [
     ("野", "야당"),
     ("與", "여당"),
     ("尹", "윤석열"),
-    ("李", "이재명"),
-    ("李", "이재명"),
+    ("李대통령", "이 대통령"),
+    ("李대통령", "이 대통령"),
+    ("李", "이"),
+    ("李", "이"),
     ("韓", "한국"),
     ("美", "미국"),
     ("中", "중국"),
@@ -158,7 +160,7 @@ async def get_fourcut_list():
         return [
             {
                 "id": article.id,
-                "title": article.title,
+                "title": _display_title(article.title, 2),
                 "category": _display_category(article.category),
                 "pub_date": article.pub_date,
                 "comic_path": comic.comic_path,
