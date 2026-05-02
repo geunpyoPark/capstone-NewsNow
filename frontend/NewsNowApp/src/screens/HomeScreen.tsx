@@ -16,7 +16,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, categoryColor, Level } from '../theme';
 import { NewsItem } from '../data/news';
-import { useAppContext, FONT_SCALE_LABEL, FontScale } from '../context/AppContext';
+import { useAppContext, FontScale } from '../context/AppContext';
 import StripePlaceholder from '../components/StripePlaceholder';
 import LevelBadge from '../components/LevelBadge';
 import { formatNewsDate } from '../utils/date';
@@ -274,9 +274,11 @@ export default function HomeScreen({ navigation }: Props) {
           </Text>
 
           {loading && apiNews.length === 0 ? (
-            <View style={styles.slideLoading}>
+            <View style={styles.loadingBox}>
               <ActivityIndicator size="small" color={colors.primary} />
             </View>
+          ) : recommended.length === 0 ? (
+            <Text style={styles.emptyText}>아직 표시할 뉴스가 없어요</Text>
           ) : (
             <>
               <FlatList
@@ -347,7 +349,13 @@ export default function HomeScreen({ navigation }: Props) {
           </Text>
 
           <View style={styles.popCard}>
-            {popular.map((item, i) => (
+            {loading && apiNews.length === 0 ? (
+              <View style={styles.loadingBox}>
+                <ActivityIndicator size="small" color={colors.primary} />
+              </View>
+            ) : popular.length === 0 ? (
+              <Text style={styles.emptyText}>인기 뉴스 데이터가 없어요</Text>
+            ) : popular.map((item, i) => (
               <TouchableOpacity
                 key={item.id}
                 style={[
@@ -493,6 +501,17 @@ const styles = StyleSheet.create({
 
   /* Sections */
   section: { paddingHorizontal: 20, paddingTop: 24 },
+  loadingBox: {
+    minHeight: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    paddingVertical: 24,
+    textAlign: 'center',
+    color: colors.textSecondary,
+    fontSize: 13,
+  },
   sectionTitle: {
     fontSize: 15,
     fontWeight: '700',

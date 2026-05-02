@@ -15,8 +15,7 @@ import { colors, categoryColor } from '../theme';
 import { useAppContext, FONT_SCALE_MULTIPLIER } from '../context/AppContext';
 import LevelBadge from '../components/LevelBadge';
 import { formatNewsDate } from '../utils/date';
-
-const BASE_URL = 'https://mainrepo-production-4ca1.up.railway.app';
+import { API_BASE_URL } from '../config/api';
 
 type Props = {
   navigation: any;
@@ -52,15 +51,17 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
       try {
         let levelNum = 1;
         if (userEmail) {
-          const levelRes = await fetch(`${BASE_URL}/quiz/level/${userEmail}`);
+          const levelRes = await fetch(`${API_BASE_URL}/quiz/level/${userEmail}`);
           const levelData = await levelRes.json();
           levelNum = levelData.overall_level ?? 1;
         }
-        const res = await fetch(`${BASE_URL}/news/${newsId}?level=${levelNum}`);
+        const res = await fetch(`${API_BASE_URL}/news/${newsId}?level=${levelNum}`);
         const data = await res.json();
         setItem(data);
         markRead(String(newsId));
-        await fetch(`${BASE_URL}/news/${newsId}/view`, { method: 'PATCH' });
+
+        // 조회수 증가
+        await fetch(`${API_BASE_URL}/news/${newsId}/view`, { method: 'PATCH' });
       } catch (e) {
         console.error(e);
       } finally {
@@ -97,6 +98,10 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
   const highlights = Array.isArray(item.highlights) ? item.highlights : [];
 
   const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  const handleHighlightPress = (word: string, definition: string) => {
+    setSelectedHighlight({ word, definition });
+  };
 
   const renderHighlightedContent = () => {
     const content = item.content ?? '';
@@ -141,7 +146,7 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
             <Text
               key={`${segment}-${index}`}
               style={styles.highlightedWord}
-              onPress={() => setSelectedHighlight({ word: segment, definition })}
+              onPress={() => handleHighlightPress(segment, String(definition))}
             >
               {segment}
             </Text>
@@ -165,7 +170,7 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
     setXpDelta(firstAttempt ? delta : 0);
 
     if (correct && firstAttempt) {
-      Alert.alert('정답!', `+30 XP 획득했어요 🎉`);
+      Alert.alert('정답!', `+${delta} XP 획득했어요 🎉`);
     } else if (!correct && firstAttempt) {
       Alert.alert('아쉬워요', `-10 XP 차감됐어요. 설명을 확인해 보세요.`);
     }

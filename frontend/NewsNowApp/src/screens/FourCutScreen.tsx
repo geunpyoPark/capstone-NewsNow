@@ -12,8 +12,7 @@ import {
 import { colors, categoryColor } from '../theme';
 import { CAT_FILTERS } from '../data/news';
 import CategoryPill from '../components/CategoryPill';
-
-const BASE_URL = 'https://mainrepo-production-4ca1.up.railway.app';
+import { API_BASE_URL } from '../config/api';
 
 type Props = {
   navigation: any;
@@ -26,7 +25,7 @@ export default function FourCutScreen({ navigation }: Props) {
   useEffect(() => {
     const loadFourCut = async () => {
       try {
-        const res = await fetch(`${BASE_URL}/news/fourcut`);
+        const res = await fetch(`${API_BASE_URL}/news/fourcut`);
         const data = await res.json();
         setFourCutList(data);
       } catch (e) {

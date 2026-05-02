@@ -67,7 +67,7 @@ export default function MainTabs() {
           tabBarLabel: '뉴스목록',
           tabBarIcon: ({ focused }) => (
             <TabIcon
-              source={require('../assets/images/news_list.png')}
+              source={require('../assets/images/news.png')}
               focused={focused}
             />
           ),
@@ -80,7 +80,7 @@ export default function MainTabs() {
           tabBarLabel: '네컷뉴스',
           tabBarIcon: ({ focused }) => (
             <TabIcon
-              source={require('../assets/images/news_cartoon.png')}
+              source={require('../assets/images/comic.png')}
               focused={focused}
             />
           ),
@@ -93,7 +93,7 @@ export default function MainTabs() {
           tabBarLabel: '마이',
           tabBarIcon: ({ focused }) => (
             <TabIcon
-              source={require('../assets/images/my_page.png')}
+              source={require('../assets/images/mypage.png')}
               focused={focused}
             />
           ),

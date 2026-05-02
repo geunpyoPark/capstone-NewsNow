@@ -8,11 +8,10 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { colors, categoryColor, xpToLevel } from '../theme';
-import { MAIN_CATEGORIES, SCRAP_FOLDERS, NEWS_DATA } from '../data/news';
+import { colors, categoryColor } from '../theme';
+import { MAIN_CATEGORIES, SCRAP_FOLDERS, NEWS_DATA, XP_PER_LEVEL } from '../data/news';
 import { useAppContext } from '../context/AppContext';
 import XPBar from '../components/XPBar';
-import LevelBadge from '../components/LevelBadge';
 
 type Props = {
   navigation: any;
@@ -62,7 +61,7 @@ export default function MyPageScreen({ navigation }: Props) {
   const handleLogout = () => {
     Alert.alert(
       '로그아웃',
-      '정말 로그아웃할까요? 모든 진행 상황이 초기화돼요.',
+      '정말 로그아웃할까요? 경험치와 퀴즈 기록은 계정별로 유지돼요.',
       [
         { text: '취소', style: 'cancel' },
         {
@@ -116,7 +115,7 @@ export default function MyPageScreen({ navigation }: Props) {
         <View style={styles.levelCard}>
           {visibleCategories.map(cat => {
             const xp = catXp[cat] ?? 0;
-            const level = xpToLevel(xp);
+            const level = Math.floor(xp / XP_PER_LEVEL) + 1;
             return (
               <View key={cat} style={styles.levelRow}>
                 <View style={styles.levelHead}>
@@ -124,7 +123,9 @@ export default function MyPageScreen({ navigation }: Props) {
                     <View style={[styles.dot, { backgroundColor: categoryColor(cat) }]} />
                     <Text style={styles.levelName}>{cat}</Text>
                   </View>
-                  <LevelBadge level={level} />
+                  <View style={styles.levelBadge}>
+                    <Text style={styles.levelBadgeText}>Lv.{level}</Text>
+                  </View>
                 </View>
                 <XPBar cat={cat} xp={xp} compact hideCatLabel />
               </View>
@@ -227,6 +228,17 @@ const styles = StyleSheet.create({
   levelTitleRow: { flexDirection: 'row', alignItems: 'center' },
   dot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
   levelName: { fontSize: 13, fontWeight: '600', color: colors.textPrimary },
+  levelBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: colors.primaryLight,
+  },
+  levelBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.primary,
+  },
 
   folderList: {
     backgroundColor: colors.white,
