@@ -12,12 +12,13 @@ import {
   NativeScrollEvent,
   Alert,
   ActivityIndicator,
+  Image,
+  ImageSourcePropType,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, categoryColor, Level } from '../theme';
 import { NewsItem } from '../data/news';
 import { useAppContext, FontScale } from '../context/AppContext';
-import StripePlaceholder from '../components/StripePlaceholder';
 import LevelBadge from '../components/LevelBadge';
 import { formatNewsDate } from '../utils/date';
 import { API_BASE_URL } from '../config/api';
@@ -27,8 +28,10 @@ type Props = {
 };
 
 const { width: SCREEN_W } = Dimensions.get('window');
-const SLIDE_GUTTER = 20; // 양쪽 여백
+const SLIDE_GUTTER = 20;
 const SLIDE_WIDTH = SCREEN_W - SLIDE_GUTTER * 2;
+const SLIDE_GAP = 14;
+const SLIDE_INTERVAL = SLIDE_WIDTH + SLIDE_GAP;
 
 function formatViews(n: number) {
   if (n >= 10000) return `${(n / 10000).toFixed(1)}만`;
@@ -46,6 +49,15 @@ function toLevelLabel(n: number): string {
   return `Lv${normalized}`;
 }
 
+function categoryIconSource(cat?: string): ImageSourcePropType {
+  const key = cat ?? '';
+  if (key.includes('정치')) return require('../assets/images/political_icon.png');
+  if (key.includes('경제') || key.includes('금융')) return require('../assets/images/economic_icon.png');
+  if (key.includes('사회')) return require('../assets/images/social_icon.png');
+  if (key.includes('IT') || key.includes('과학')) return require('../assets/images/it_icon.png');
+  return require('../assets/images/news.png');
+}
+
 export default function HomeScreen({ navigation }: Props) {
   const {
     userEmail,
@@ -53,6 +65,7 @@ export default function HomeScreen({ navigation }: Props) {
     selectedCategories,
     readIds,
     getCurrentWeekReadDays,
+    getCategoryNumericLevel,
     fontScale,
     setFontScale,
   } = useAppContext();
@@ -84,38 +97,37 @@ export default function HomeScreen({ navigation }: Props) {
   // API 뉴스 데이터
   const [apiNews, setApiNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [categoryLevels, setCategoryLevels] = useState<Record<string, number>>({});
 
   const loadNews = useCallback(async () => {
     try {
       setLoading(true);
 
       let levelNum = 2;
-      let nextCategoryLevels: Record<string, number> = {};
       if (userEmail) {
         try {
           const levelRes = await fetch(`${API_BASE_URL}/quiz/level/${userEmail}`);
           const levelData = await levelRes.json();
           levelNum = levelData.overall_level ?? 2;
-          nextCategoryLevels = levelData.categories ?? {};
         } catch {}
       }
-      setCategoryLevels(nextCategoryLevels);
 
       const res = await fetch(`${API_BASE_URL}/news/?level=${levelNum}`);
       const data = await res.json();
 
-      const mapped: NewsItem[] = (data as any[]).map(a => ({
-        id: String(a.id),
-        title: a.title,
-        cat: a.category,
-        summary: a.content ?? '',
-        body: [],
-        views: a.view_count ?? 0,
-        time: formatNewsDate(a.pub_date, 'compact'),
-        level: toDisplayLevel(nextCategoryLevels[a.category] ?? levelNum),
-        color: categoryColor(a.category),
-      }));
+      const mapped: NewsItem[] = (data as any[]).map(a => {
+        const catLevel = getCategoryNumericLevel(a.category);
+        return {
+          id: String(a.id),
+          title: a.title,
+          cat: a.category,
+          summary: a.content ?? '',
+          body: [],
+          views: a.view_count ?? 0,
+          time: formatNewsDate(a.pub_date, 'compact'),
+          level: toDisplayLevel(catLevel),
+          color: categoryColor(a.category),
+        };
+      });
 
       setApiNews(mapped);
     } catch (e) {
@@ -123,7 +135,7 @@ export default function HomeScreen({ navigation }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [userEmail]);
+  }, [getCategoryNumericLevel, userEmail]);
 
   useFocusEffect(
     useCallback(() => {
@@ -150,9 +162,9 @@ export default function HomeScreen({ navigation }: Props) {
     [apiNews],
   );
 
-  // 슬라이드 자동 이동
+  // 추천 뉴스 자동 슬라이드
   const [slideIdx, setSlideIdx] = useState(0);
-  const slideRef = useRef<FlatList>(null);
+  const slideRef = useRef<FlatList<NewsItem>>(null);
 
   useEffect(() => {
     if (recommended.length <= 1) return;
@@ -168,7 +180,7 @@ export default function HomeScreen({ navigation }: Props) {
 
   const handleSlideScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const x = e.nativeEvent.contentOffset.x;
-    const idx = Math.round(x / SLIDE_WIDTH);
+    const idx = Math.round(x / SLIDE_INTERVAL);
     if (recommended.length > 1 && idx === recommended.length) {
       setSlideIdx(0);
       requestAnimationFrame(() => {
@@ -184,6 +196,10 @@ export default function HomeScreen({ navigation }: Props) {
   // 주(週)가 바뀌면 자동으로 전부 꺼진 상태로 표시됨.
   const weekRead = getCurrentWeekReadDays();
   const weekLabels = ['월', '화', '수', '목', '금', '토', '일'];
+  const streakCount = weekRead.filter(Boolean).length;
+  const streakText = streakCount > 0
+    ? `${streakCount}일째 연속 출석!`
+    : '이번주 연속';
 
   // 카테고리 타이틀용 이모지 맵
   const catEmoji = (cat: string) => {
@@ -249,7 +265,7 @@ export default function HomeScreen({ navigation }: Props) {
               </View>
             </View>
             <View style={styles.streakWrap}>
-              <Text style={styles.streakLabel}>이번주 연속</Text>
+              <Text style={styles.streakLabel}>{streakText}</Text>
               <View style={styles.streakRow}>
                 {weekLabels.map((d, i) => (
                   <View key={d} style={styles.streakItem}>
@@ -288,48 +304,56 @@ export default function HomeScreen({ navigation }: Props) {
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
-                snapToInterval={SLIDE_WIDTH}
+                snapToInterval={SLIDE_INTERVAL}
                 decelerationRate="fast"
                 onMomentumScrollEnd={handleSlideScroll}
-                style={styles.slideList}
+                style={styles.recommendSlideList}
+                getItemLayout={(_data, index) => ({
+                  length: SLIDE_INTERVAL,
+                  offset: SLIDE_INTERVAL * index,
+                  index,
+                })}
                 renderItem={({ item }) => (
-                  <TouchableOpacity
-                    activeOpacity={0.85}
-                    onPress={() =>
-                      navigation.navigate('NewsDetail', {
-                        newsId: item.id,
-                        levelStyle: item.level,
-                        levelLabel: toLevelLabel(categoryLevels[item.cat] ?? 2),
-                      })
-                    }
-                    style={[styles.slideCard, { width: SLIDE_WIDTH }]}
-                  >
-                    <StripePlaceholder
-                      color={item.color}
-                      label={item.title}
-                      style={styles.slideThumb}
-                    />
-                    <View style={styles.slideBody}>
-                      <Text style={styles.slideCat}>{item.cat}</Text>
-                      <Text style={styles.slideTitle} numberOfLines={2}>
-                        {item.title}
-                      </Text>
-                      <View style={styles.slideMeta}>
-                        <LevelBadge
-                          level={item.level}
-                          label={toLevelLabel(categoryLevels[item.cat] ?? 2)}
-                        />
-                        <Text style={styles.metaText}>
-                          👁 {formatViews(item.views)}
-                        </Text>
-                        <Text style={styles.metaTimeDot}>·</Text>
-                        <Text style={styles.metaText}>{item.time}</Text>
-                      </View>
+                <TouchableOpacity
+                  key={item.id}
+                  activeOpacity={0.88}
+                  onPress={() =>
+                    navigation.navigate('NewsDetail', {
+                      newsId: item.id,
+                      levelStyle: item.level,
+                      levelLabel: toLevelLabel(getCategoryNumericLevel(item.cat)),
+                    })
+                  }
+                  style={styles.recommendCard}
+                >
+                  <View style={styles.recommendIconHalo} />
+                  <Image
+                    source={categoryIconSource(item.cat)}
+                    style={styles.recommendBgIcon}
+                  />
+                  <View style={styles.recommendContent}>
+                    <View style={styles.recommendCatPill}>
+                      <Text style={styles.recommendCatText}>{item.cat}</Text>
                     </View>
-                  </TouchableOpacity>
+                    <Text style={styles.recommendTitle} numberOfLines={2}>
+                      {item.title}
+                    </Text>
+                    <Text style={styles.recommendSummary} numberOfLines={2}>
+                      {item.summary}
+                    </Text>
+                    <View style={styles.recommendMeta}>
+                      <LevelBadge
+                        level={item.level}
+                        label={toLevelLabel(getCategoryNumericLevel(item.cat))}
+                        style={styles.recommendLevel}
+                      />
+                      <Text style={styles.recommendMetaText}>👁 {formatViews(item.views)}</Text>
+                      <Text style={styles.recommendMetaText}>{item.time}</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
                 )}
               />
-              {/* 슬라이드 인디케이터 */}
               <View style={styles.dots}>
                 {recommended.map((_item, i) => (
                   <View
@@ -367,7 +391,7 @@ export default function HomeScreen({ navigation }: Props) {
                   navigation.navigate('NewsDetail', {
                     newsId: item.id,
                     levelStyle: item.level,
-                    levelLabel: toLevelLabel(categoryLevels[item.cat] ?? 2),
+                    levelLabel: toLevelLabel(getCategoryNumericLevel(item.cat)),
                   })
                 }
               >
@@ -397,7 +421,7 @@ export default function HomeScreen({ navigation }: Props) {
                   <View style={styles.popMeta}>
                     <LevelBadge
                       level={item.level}
-                      label={toLevelLabel(categoryLevels[item.cat] ?? 2)}
+                      label={toLevelLabel(getCategoryNumericLevel(item.cat))}
                     />
                     <Text style={styles.popMetaCat}>{item.cat}</Text>
                     <Text style={styles.metaText}>
@@ -520,34 +544,82 @@ const styles = StyleSheet.create({
   },
   sectionTitleEm: { color: colors.primary },
 
-  /* Slide */
-  slideLoading: { height: 200, alignItems: 'center', justifyContent: 'center' },
-  slideList: { marginHorizontal: -20, paddingHorizontal: 20 },
-  slideCard: {
-    backgroundColor: colors.white,
-    borderRadius: 16,
+  metaText: { fontSize: 10, color: colors.textMuted },
+
+  recommendSlideList: { marginHorizontal: -20, paddingHorizontal: 20 },
+  recommendCard: {
+    minHeight: 178,
+    width: SLIDE_WIDTH,
+    marginRight: SLIDE_GAP,
+    borderRadius: 18,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
+    backgroundColor: '#E4EDFF',
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#CADBFF',
+    shadowColor: '#8EA7E9',
+    shadowOpacity: 0.16,
     shadowRadius: 12,
     elevation: 2,
-    marginRight: 0,
   },
-  slideThumb: { height: 140, width: '100%' },
-  slideBody: { padding: 14 },
-  slideCat: { fontSize: 10, fontWeight: '700', color: colors.primary, marginBottom: 4 },
-  slideTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    lineHeight: 20,
+  recommendIconHalo: {
+    position: 'absolute',
+    right: -46,
+    top: 22,
+    width: 190,
+    height: 190,
+    borderRadius: 95,
+    backgroundColor: 'rgba(93,124,233,0.11)',
+  },
+  recommendBgIcon: {
+    position: 'absolute',
+    right: 18,
+    bottom: 12,
+    width: 116,
+    height: 116,
+    resizeMode: 'contain',
+    opacity: 0.18,
+  },
+  recommendContent: {
+    maxWidth: '82%',
+    minHeight: 138,
+    justifyContent: 'space-between',
+  },
+  recommendCatPill: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    backgroundColor: '#D4E2FF',
+    marginBottom: 10,
+  },
+  recommendCatText: { fontSize: 12, fontWeight: '800', color: '#4F6FEA' },
+  recommendTitle: {
+    fontSize: 23,
+    fontWeight: '900',
+    color: '#152033',
+    lineHeight: 31,
     marginBottom: 8,
   },
-  slideMeta: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-
-  metaText: { fontSize: 10, color: colors.textMuted },
-  metaTimeDot: { fontSize: 10, color: colors.textSubtle, marginHorizontal: -4 },
-
+  recommendSummary: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#526173',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  recommendMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  recommendLevel: { backgroundColor: colors.white },
+  recommendMetaText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#7A879A',
+  },
   dots: {
     flexDirection: 'row',
     justifyContent: 'center',

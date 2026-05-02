@@ -8,7 +8,9 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
+import { normalizeCategoryLevelMap } from '../data/news';
 import { markOnboarded } from '../utils/onboarding';
+import { API_BASE_URL } from '../config/api';
 
 type Props = {
   navigation: any;
@@ -50,6 +52,12 @@ export default function LevelResultScreen({ navigation, route }: Props) {
     categoryResults.length;
 
   const overallLevel = getLevel(Math.round(averageScore));
+  const categoryBaseLevels = normalizeCategoryLevelMap(
+    categoryResults.reduce((acc: Record<string, number>, item: any) => {
+      acc[item.category] = item.level;
+      return acc;
+    }, {}),
+  );
 
   // 퀴즈 결과 DB 저장
   useEffect(() => {
@@ -127,7 +135,7 @@ export default function LevelResultScreen({ navigation, route }: Props) {
               routes: [
                 {
                   name: 'Main',
-                  params: { selectedCategories, userEmail, userName },
+                  params: { selectedCategories, userEmail, userName, categoryBaseLevels },
                 },
               ],
             });
@@ -161,4 +169,3 @@ const styles = StyleSheet.create({
   retryButton: { backgroundColor: '#5D7CE9', minHeight: 58, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   retryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
 });
-import { API_BASE_URL } from '../config/api';

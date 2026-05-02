@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ type Props = {
 };
 
 export default function MyPageScreen({ navigation }: Props) {
+  const [showAllCategories, setShowAllCategories] = useState(false);
   const {
     userEmail,
     userName,
@@ -26,7 +27,8 @@ export default function MyPageScreen({ navigation }: Props) {
     scrappedArticles,
     scrappedWords,
     solvedQuizIds,
-    catXp,
+    getCategoryXp,
+    getCategoryNumericLevel,
     logout,
   } = useAppContext();
 
@@ -48,7 +50,14 @@ export default function MyPageScreen({ navigation }: Props) {
     }, {});
   }, [scrappedArticles, scrappedWords.length]);
 
-  const visibleCategories = selectedCategories.length ? selectedCategories : MAIN_CATEGORIES;
+  const selectedGrowthCategories = selectedCategories.length ? selectedCategories : MAIN_CATEGORIES;
+  const hiddenGrowthCategories = useMemo(() => {
+    const selectedSet = new Set(selectedGrowthCategories);
+    return MAIN_CATEGORIES.filter(cat => !selectedSet.has(cat));
+  }, [selectedGrowthCategories]);
+  const visibleCategories = showAllCategories
+    ? [...selectedGrowthCategories, ...hiddenGrowthCategories]
+    : selectedGrowthCategories;
 
   const displayName = useMemo(() => {
     if (userName && userName.trim()) return userName.trim();
@@ -113,8 +122,8 @@ export default function MyPageScreen({ navigation }: Props) {
         <Text style={styles.sectionTitle}>카테고리별 성장</Text>
         <View style={styles.levelCard}>
           {visibleCategories.map(cat => {
-            const xp = catXp[cat] ?? 0;
-            const level = Math.floor(xp / XP_PER_LEVEL) + 1;
+            const xp = getCategoryXp(cat);
+            const level = getCategoryNumericLevel(cat);
             return (
               <View key={cat} style={styles.levelRow}>
                 <View style={styles.levelHead}>
@@ -130,6 +139,17 @@ export default function MyPageScreen({ navigation }: Props) {
               </View>
             );
           })}
+          {hiddenGrowthCategories.length > 0 && (
+            <TouchableOpacity
+              style={styles.moreCategoriesBtn}
+              activeOpacity={0.82}
+              onPress={() => setShowAllCategories(prev => !prev)}
+            >
+              <Text style={styles.moreCategoriesText}>
+                {showAllCategories ? '접기' : `더보기 (${hiddenGrowthCategories.length})`}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* 스크랩 폴더 */}
@@ -235,6 +255,18 @@ const styles = StyleSheet.create({
   },
   levelBadgeText: {
     fontSize: 11,
+    fontWeight: '800',
+    color: colors.primary,
+  },
+  moreCategoriesBtn: {
+    marginTop: 8,
+    paddingVertical: 11,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: colors.primaryLight,
+  },
+  moreCategoriesText: {
+    fontSize: 13,
     fontWeight: '800',
     color: colors.primary,
   },

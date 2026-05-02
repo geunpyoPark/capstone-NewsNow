@@ -5,6 +5,7 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
+  SafeAreaView,
 } from 'react-native';
 import { colors } from '../theme';
 import { NewsItem } from '../data/news';
@@ -33,6 +34,14 @@ export default function ScrapFolderScreen({ navigation, route }: Props) {
     ? '단어 스크랩 기능이 연결되면 여기서 모아볼 수 있어요'
     : '뉴스 상세 화면에서 ☆ 버튼을 눌러 저장해 보세요';
 
+  const handleGoBack = () => {
+    if (navigation.canGoBack?.()) {
+      navigation.goBack();
+      return;
+    }
+    navigation.navigate('MyPage');
+  };
+
   const EmptyComponent = (
     <View style={styles.empty}>
       <Text style={styles.emptyEmoji}>📭</Text>
@@ -42,16 +51,16 @@ export default function ScrapFolderScreen({ navigation, route }: Props) {
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.topBar}>
         <TouchableOpacity
-          onPress={() => navigation.goBack()}
+          onPress={handleGoBack}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
         <Text style={styles.topTitle}>{folderName ?? '스크랩'}</Text>
-        <View style={{ width: 32 }} />
+        <View style={styles.topSpacer} />
       </View>
 
       {folderKind === 'word' ? (
@@ -84,7 +93,7 @@ export default function ScrapFolderScreen({ navigation, route }: Props) {
           ListEmptyComponent={EmptyComponent}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -102,6 +111,7 @@ const styles = StyleSheet.create({
   },
   backIcon: { fontSize: 28, color: colors.textPrimary, width: 32 },
   topTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
+  topSpacer: { width: 32 },
 
   list: { padding: 20, paddingBottom: 40 },
   wordCard: {

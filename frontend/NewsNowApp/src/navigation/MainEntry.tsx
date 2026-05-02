@@ -10,7 +10,7 @@ type Props = {
 };
 
 export default function MainEntry({ route }: Props) {
-  const { setUserEmail, setUserName, setSelectedCategories } = useAppContext();
+  const { setUserEmail, setUserName, setSelectedCategories, setCategoryBaseLevels } = useAppContext();
 
   useEffect(() => {
     const params = route?.params ?? {};
@@ -18,6 +18,9 @@ export default function MainEntry({ route }: Props) {
     if (typeof params.userName === 'string') setUserName(params.userName);
     if (Array.isArray(params.selectedCategories) && params.selectedCategories.length > 0) {
       setSelectedCategories(params.selectedCategories);
+    }
+    if (params.categoryBaseLevels && typeof params.categoryBaseLevels === 'object') {
+      setCategoryBaseLevels(params.categoryBaseLevels);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
