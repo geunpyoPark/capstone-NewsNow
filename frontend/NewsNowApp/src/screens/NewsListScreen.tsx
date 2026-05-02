@@ -133,7 +133,7 @@ export default function NewsListScreen({ navigation }: Props) {
                 levelLabel: item.level,
               })
             }
-            onScrapPress={() => toggleScrap(item.id)}
+            onScrapPress={() => toggleScrap(item.id, item)}
           />
         )}
         ListEmptyComponent={

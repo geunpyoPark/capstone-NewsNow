@@ -3,12 +3,11 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   FlatList,
   TouchableOpacity,
 } from 'react-native';
 import { colors } from '../theme';
-import { NEWS_DATA } from '../data/news';
+import { NewsItem } from '../data/news';
 import { useAppContext } from '../context/AppContext';
 import NewsCard from '../components/NewsCard';
 
@@ -19,23 +18,31 @@ type Props = {
 
 export default function ScrapFolderScreen({ navigation, route }: Props) {
   const { folderName, folderCategories, folderKind } = route.params ?? {};
-  const { scrappedIds, readIds, toggleScrap, isScrapped, scrappedWords } = useAppContext();
+  const { scrappedArticles, readIds, toggleScrap, isScrapped, scrappedWords } = useAppContext();
 
-  // 폴더에 지정된 카테고리에 속하는 스크랩만 필터
-  // folderCategories가 없으면 (구버전 호환) 전체 스크랩을 보여줌
-  const items = useMemo(() => {
-    if (folderKind === 'word') {
-      return scrappedWords;
-    }
-    const scrapped = NEWS_DATA.filter(n => scrappedIds.includes(n.id));
+  const newsItems = useMemo((): NewsItem[] => {
+    if (folderKind === 'word') return [];
     if (!folderCategories || !Array.isArray(folderCategories) || folderCategories.length === 0) {
-      return scrapped;
+      return scrappedArticles;
     }
-    return scrapped.filter(n => folderCategories.includes(n.cat));
-  }, [scrappedIds, folderCategories, folderKind, scrappedWords]);
+    return scrappedArticles.filter(n => folderCategories.includes(n.cat));
+  }, [scrappedArticles, folderCategories, folderKind]);
+
+  const emptyText = folderKind === 'word' ? '스크랩한 단어가 없어요' : '스크랩한 뉴스가 없어요';
+  const emptySub = folderKind === 'word'
+    ? '단어 스크랩 기능이 연결되면 여기서 모아볼 수 있어요'
+    : '뉴스 상세 화면에서 ☆ 버튼을 눌러 저장해 보세요';
+
+  const EmptyComponent = (
+    <View style={styles.empty}>
+      <Text style={styles.emptyEmoji}>📭</Text>
+      <Text style={styles.emptyTitle}>{emptyText}</Text>
+      <Text style={styles.emptySub}>{emptySub}</Text>
+    </View>
+  );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <View style={styles.topBar}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -47,17 +54,25 @@ export default function ScrapFolderScreen({ navigation, route }: Props) {
         <View style={{ width: 32 }} />
       </View>
 
-      <FlatList
-        data={items}
-        keyExtractor={i => i.id}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          folderKind === 'word' ? (
+      {folderKind === 'word' ? (
+        <FlatList
+          data={scrappedWords}
+          keyExtractor={i => i.id}
+          contentContainerStyle={styles.list}
+          renderItem={({ item }) => (
             <View style={styles.wordCard}>
               <Text style={styles.wordTitle}>{item.word}</Text>
               <Text style={styles.wordDefinition}>{item.definition}</Text>
             </View>
-          ) : (
+          )}
+          ListEmptyComponent={EmptyComponent}
+        />
+      ) : (
+        <FlatList
+          data={newsItems}
+          keyExtractor={i => i.id}
+          contentContainerStyle={styles.list}
+          renderItem={({ item }) => (
             <NewsCard
               item={item}
               read={readIds.includes(item.id)}
@@ -65,23 +80,11 @@ export default function ScrapFolderScreen({ navigation, route }: Props) {
               onPress={() => navigation.navigate('NewsDetail', { newsId: item.id })}
               onScrapPress={() => toggleScrap(item.id)}
             />
-          )
-        )}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyEmoji}>📭</Text>
-            <Text style={styles.emptyTitle}>
-              {folderKind === 'word' ? '스크랩한 단어가 없어요' : '스크랩한 뉴스가 없어요'}
-            </Text>
-            <Text style={styles.emptySub}>
-              {folderKind === 'word'
-                ? '단어 스크랩 기능이 연결되면 여기서 모아볼 수 있어요'
-                : '뉴스 상세 화면에서 ☆ 버튼을 눌러 저장해 보세요'}
-            </Text>
-          </View>
-        }
-      />
-    </SafeAreaView>
+          )}
+          ListEmptyComponent={EmptyComponent}
+        />
+      )}
+    </View>
   );
 }
 

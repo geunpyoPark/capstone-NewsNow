@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { XP_CORRECT, XP_WRONG } from '../data/news';
+import { XP_CORRECT, XP_WRONG, NewsItem } from '../data/news';
 import { xpToLevel } from '../theme';
 import { API_BASE_URL } from '../config/api';
 
@@ -34,6 +34,7 @@ type AppState = {
   selectedCategories: string[];
   readIds: string[];
   scrappedIds: string[];
+  scrappedArticles: NewsItem[];
   scrappedWords: ScrappedWord[];
   catXp: CatXp;
   solvedQuizIds: string[];
@@ -50,7 +51,7 @@ type AppContextValue = AppState & {
   setUserName: (name: string | null) => void;
   setSelectedCategories: (cats: string[]) => void;
   markRead: (newsId: string) => void;
-  toggleScrap: (newsId: string) => void;
+  toggleScrap: (newsId: string, article?: NewsItem) => void;
   isScrapped: (newsId: string) => boolean;
   scrapWord: (word: string, definition: string, articleId: number) => Promise<{ ok: boolean; message: string }>;
   isWordScrapped: (word: string, articleId?: number | null) => boolean;
@@ -71,6 +72,7 @@ const defaultState: AppState = {
   selectedCategories: [],
   readIds: [],
   scrappedIds: [],
+  scrappedArticles: [],
   scrappedWords: [],
   catXp: {},
   solvedQuizIds: [],
@@ -101,13 +103,14 @@ const USER_PROGRESS_KEY = '@newspick/userProgress/v1';
 
 type UserProgress = Pick<
   AppState,
-  'selectedCategories' | 'readIds' | 'scrappedIds' | 'catXp' | 'solvedQuizIds' | 'weekStartMs' | 'readWeekdays'
+  'selectedCategories' | 'readIds' | 'scrappedIds' | 'scrappedArticles' | 'catXp' | 'solvedQuizIds' | 'weekStartMs' | 'readWeekdays'
 >;
 
 const emptyProgress = (): UserProgress => ({
   selectedCategories: [],
   readIds: [],
   scrappedIds: [],
+  scrappedArticles: [],
   catXp: {},
   solvedQuizIds: [],
   weekStartMs: 0,
@@ -118,6 +121,7 @@ const pickProgress = (state: AppState): UserProgress => ({
   selectedCategories: state.selectedCategories,
   readIds: state.readIds,
   scrappedIds: state.scrappedIds,
+  scrappedArticles: state.scrappedArticles,
   catXp: state.catXp,
   solvedQuizIds: state.solvedQuizIds,
   weekStartMs: state.weekStartMs,
@@ -255,14 +259,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return state.readWeekdays;
   }, [state.weekStartMs, state.readWeekdays]);
 
-  const toggleScrap = useCallback((newsId: string) => {
+  const toggleScrap = useCallback((newsId: string, article?: NewsItem) => {
     setState(s => {
       const exists = s.scrappedIds.includes(newsId);
+      if (!exists && s.userEmail) {
+        fetch(`${API_BASE_URL}/scrap/article`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_email: s.userEmail, article_id: Number(newsId) }),
+        }).catch(() => {});
+      }
       return {
         ...s,
         scrappedIds: exists
           ? s.scrappedIds.filter(id => id !== newsId)
           : [...s.scrappedIds, newsId],
+        scrappedArticles: exists
+          ? s.scrappedArticles.filter(a => a.id !== newsId)
+          : article
+          ? [...s.scrappedArticles, article]
+          : s.scrappedArticles,
       };
     });
   }, []);

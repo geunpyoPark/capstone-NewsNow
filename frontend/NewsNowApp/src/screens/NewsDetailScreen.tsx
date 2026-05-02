@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { colors, categoryColor } from '../theme';
 import { useAppContext, FONT_SCALE_MULTIPLIER } from '../context/AppContext';
+import { NewsItem } from '../data/news';
 import LevelBadge from '../components/LevelBadge';
 import { formatNewsDate } from '../utils/date';
 import { API_BASE_URL } from '../config/api';
@@ -172,7 +173,7 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
     if (correct && firstAttempt) {
       Alert.alert('정답!', `+${delta} XP 획득했어요 🎉`);
     } else if (!correct && firstAttempt) {
-      Alert.alert('아쉬워요', `-10 XP 차감됐어요. 설명을 확인해 보세요.`);
+      Alert.alert('아쉬워요', `${delta} XP 차감됐어요. 설명을 확인해 보세요.`);
     }
   };
 
@@ -180,6 +181,17 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
   const xpSignedText = xpDelta > 0 ? `+${xpDelta}` : xpDelta < 0 ? `${xpDelta}` : null;
   const detailLevelStyle = levelStyle ?? '중';
   const detailLevelLabel = levelLabel ?? detailLevelStyle;
+  const articleForScrap: NewsItem = {
+    id: String(newsId),
+    title: item.title ?? '',
+    cat: item.category ?? '',
+    summary: item.content ?? '',
+    body: [],
+    views: item.view_count ?? 0,
+    time: formatNewsDate(item.pub_date, 'compact'),
+    level: (detailLevelStyle as NewsItem['level']),
+    color: '',
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -188,7 +200,7 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
           <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
         <Text style={styles.topTitle}>뉴스 상세</Text>
-        <TouchableOpacity onPress={() => toggleScrap(String(newsId))} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+        <TouchableOpacity onPress={() => toggleScrap(String(newsId), articleForScrap)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Text style={[styles.scrapIcon, scrapped && styles.scrapOn]}>
             {scrapped ? '★' : '☆'}
           </Text>

@@ -520,6 +520,6 @@ export const SCRAP_FOLDERS: ScrapFolder[] = [
 ];
 
 // 레벨별 XP 규칙
-export const XP_CORRECT = 5;
-export const XP_WRONG = -10;
+export const XP_CORRECT = 10;
+export const XP_WRONG = -5;
 export const XP_PER_LEVEL = 100;

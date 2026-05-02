@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { colors, categoryColor } from '../theme';
-import { MAIN_CATEGORIES, SCRAP_FOLDERS, NEWS_DATA, XP_PER_LEVEL } from '../data/news';
+import { MAIN_CATEGORIES, SCRAP_FOLDERS, XP_PER_LEVEL } from '../data/news';
 import { useAppContext } from '../context/AppContext';
 import XPBar from '../components/XPBar';
 
@@ -23,7 +23,7 @@ export default function MyPageScreen({ navigation }: Props) {
     userName,
     selectedCategories,
     readIds,
-    scrappedIds,
+    scrappedArticles,
     scrappedWords,
     solvedQuizIds,
     catXp,
@@ -32,22 +32,21 @@ export default function MyPageScreen({ navigation }: Props) {
 
   const stats = useMemo(() => ({
     read: readIds.length,
-    scrapped: scrappedIds.length + scrappedWords.length,
+    scrapped: scrappedArticles.length + scrappedWords.length,
     solved: solvedQuizIds.length,
-  }), [readIds, scrappedIds, scrappedWords.length, solvedQuizIds]);
+  }), [readIds, scrappedArticles.length, scrappedWords.length, solvedQuizIds]);
 
   // 각 폴더별 실제 스크랩 개수 계산
   const folderCounts = useMemo(() => {
-    const scrappedNews = NEWS_DATA.filter(n => scrappedIds.includes(n.id));
     return SCRAP_FOLDERS.reduce<Record<string, number>>((acc, f) => {
       if (f.kind === 'word') {
         acc[f.id] = scrappedWords.length;
         return acc;
       }
-      acc[f.id] = scrappedNews.filter(n => f.categories.includes(n.cat)).length;
+      acc[f.id] = scrappedArticles.filter(n => f.categories.includes(n.cat)).length;
       return acc;
     }, {});
-  }, [scrappedIds, scrappedWords.length]);
+  }, [scrappedArticles, scrappedWords.length]);
 
   const visibleCategories = selectedCategories.length ? selectedCategories : MAIN_CATEGORIES;
 
