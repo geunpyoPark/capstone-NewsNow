@@ -15,8 +15,7 @@ import { useAppContext } from '../context/AppContext';
 import NewsCard from '../components/NewsCard';
 import CategoryPill from '../components/CategoryPill';
 import { formatNewsDate } from '../utils/date';
-
-const BASE_URL = 'https://mainrepo-production-4ca1.up.railway.app';
+import { API_BASE_URL } from '../config/api';
 
 type Props = {
   navigation: any;
@@ -36,14 +35,14 @@ export default function NewsListScreen({ navigation }: Props) {
       let categoryLevels: Record<string, number> = {};
 
       if (userEmail) {
-        const levelRes = await fetch(`${BASE_URL}/quiz/level/${userEmail}`);
+        const levelRes = await fetch(`${API_BASE_URL}/quiz/level/${userEmail}`);
         const levelData = await levelRes.json();
         levelNum = levelData.overall_level ?? 2;
         categoryLevels = levelData.categories ?? {};
       }
 
       const cat = filter === '전체' ? '' : `&category=${encodeURIComponent(filter)}`;
-      const res = await fetch(`${BASE_URL}/news/?level=${levelNum}${cat}`);
+      const res = await fetch(`${API_BASE_URL}/news/?level=${levelNum}${cat}`);
       const data = await res.json();
 
       const mapped: NewsItem[] = data.map((a: any) => {

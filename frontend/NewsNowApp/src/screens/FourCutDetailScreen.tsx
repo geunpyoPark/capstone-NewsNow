@@ -10,8 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { colors, categoryColor } from '../theme';
-
-const BASE_URL = 'https://mainrepo-production-4ca1.up.railway.app';
+import { API_BASE_URL } from '../config/api';
 
 type Props = {
   navigation: any;
@@ -29,7 +28,7 @@ export default function FourCutDetailScreen({ navigation, route }: Props) {
   useEffect(() => {
     const loadDetail = async () => {
       try {
-        const res = await fetch(`${BASE_URL}/news/${fourCutId}`);
+        const res = await fetch(`${API_BASE_URL}/news/${fourCutId}`);
         const data = await res.json();
         setItem(data);
       } catch (e) {
@@ -100,7 +99,7 @@ export default function FourCutDetailScreen({ navigation, route }: Props) {
             />
           ) : (
             <Image
-              source={require('../assets/images/news_cartoon.png')}
+              source={require('../assets/images/comic.png')}
               style={{ width: frameSize, height: frameSize }}
               resizeMode="cover"
             />

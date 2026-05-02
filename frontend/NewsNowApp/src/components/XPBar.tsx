@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors, categoryColor, xpToLevel } from '../theme';
+import { colors, categoryColor } from '../theme';
 import { XP_PER_LEVEL } from '../data/news';
 
 type Props = {
@@ -12,18 +12,15 @@ type Props = {
 
 export default function XPBar({ cat, xp, compact, hideCatLabel }: Props) {
   const color = categoryColor(cat);
-  const level = xpToLevel(xp);
-  // 다음 레벨까지 남은 XP
-  const progress = xp >= 200 ? 1 : (xp % XP_PER_LEVEL) / XP_PER_LEVEL;
-  const nextTarget = xp >= 200 ? 200 : (level === '중' ? 200 : 100);
-  const current = xp >= 200 ? 200 : (xp % XP_PER_LEVEL);
+  const current = xp % XP_PER_LEVEL;
+  const progress = current / XP_PER_LEVEL;
 
   return (
     <View style={[styles.wrap, compact && styles.wrapCompact]}>
       <View style={styles.head}>
         {hideCatLabel ? <View /> : <Text style={styles.cat}>{cat}</Text>}
         <Text style={styles.xp}>
-          {xp >= 200 ? '최고 레벨' : `${current} / ${nextTarget} XP`}
+          {current} / {XP_PER_LEVEL} XP
         </Text>
       </View>
       <View style={styles.track}>

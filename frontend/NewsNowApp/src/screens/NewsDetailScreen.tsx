@@ -13,8 +13,7 @@ import { colors, categoryColor } from '../theme';
 import { useAppContext, FONT_SCALE_MULTIPLIER } from '../context/AppContext';
 import LevelBadge from '../components/LevelBadge';
 import { formatNewsDate } from '../utils/date';
-
-const BASE_URL = 'https://mainrepo-production-4ca1.up.railway.app';
+import { API_BASE_URL } from '../config/api';
 
 type Props = {
   navigation: any;
@@ -31,6 +30,7 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
     solvedQuizIds,
     fontScale,
     userEmail,
+    scrapWord,
   } = useAppContext();
 
   const fontMul = FONT_SCALE_MULTIPLIER[fontScale];
@@ -47,20 +47,17 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
       try {
         let levelNum = 1;
         if (userEmail) {
-          const levelRes = await fetch(`${BASE_URL}/quiz/level/${userEmail}`);
+          const levelRes = await fetch(`${API_BASE_URL}/quiz/level/${userEmail}`);
           const levelData = await levelRes.json();
           levelNum = levelData.overall_level ?? 1;
         }
-        const res = await fetch(`${BASE_URL}/news/${newsId}?level=${levelNum}`);
+        const res = await fetch(`${API_BASE_URL}/news/${newsId}?level=${levelNum}`);
         const data = await res.json();
         setItem(data);
         markRead(String(newsId));
 
-<<<<<<< HEAD
-=======
         // 조회수 증가
->>>>>>> origin/main
-        await fetch(`${BASE_URL}/news/${newsId}/view`, { method: 'PATCH' });
+        await fetch(`${API_BASE_URL}/news/${newsId}/view`, { method: 'PATCH' });
       } catch (e) {
         console.error(e);
       } finally {
@@ -91,10 +88,22 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
   const color = categoryColor(item.category);
   const quiz = item.quizzes?.[0] ?? null;
   const scrapped = isScrapped(String(newsId));
-<<<<<<< HEAD
   const highlights = Array.isArray(item.highlights) ? item.highlights : [];
 
   const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  const handleHighlightPress = (word: string, definition: string) => {
+    Alert.alert(word, definition, [
+      { text: '닫기', style: 'cancel' },
+      {
+        text: '단어 저장',
+        onPress: async () => {
+          const result = await scrapWord(word, definition, Number(newsId));
+          Alert.alert(result.ok ? '단어 저장' : '저장 실패', result.message);
+        },
+      },
+    ]);
+  };
 
   const renderHighlightedContent = () => {
     const content = item.content ?? '';
@@ -135,7 +144,7 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
             <Text
               key={`${segment}-${index}`}
               style={styles.highlightedWord}
-              onPress={() => setSelectedHighlight({ word: segment, definition })}
+              onPress={() => handleHighlightPress(segment, String(definition))}
             >
               {segment}
             </Text>
@@ -145,14 +154,6 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
     );
   };
 
-  const handleScrapWord = async () => {
-    if (!selectedHighlight) return;
-    const result = await scrapWord(selectedHighlight.word, selectedHighlight.definition, Number(newsId));
-    Alert.alert(result.ok ? '단어 저장' : '저장 실패', result.message);
-  };
-=======
->>>>>>> origin/main
-
   const handleSubmitQuiz = () => {
     if (selectedOption === null || !quiz) return;
     const correct = selectedOption === quiz.answer;
@@ -161,7 +162,7 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
     setXpDelta(firstAttempt ? delta : 0);
 
     if (correct && firstAttempt) {
-      Alert.alert('정답!', `+30 XP 획득했어요 🎉`);
+      Alert.alert('정답!', `+${delta} XP 획득했어요 🎉`);
     } else if (!correct && firstAttempt) {
       Alert.alert('아쉬워요', `-10 XP 차감됐어요. 설명을 확인해 보세요.`);
     }
@@ -189,20 +190,14 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
           <View style={[styles.catPill, { backgroundColor: color }]}>
             <Text style={styles.catPillText}>{item.category}</Text>
           </View>
-<<<<<<< HEAD
           <LevelBadge level={level ?? item.level ?? '중'} />
-=======
-          <LevelBadge level={level ?? 'Lv1'} />
->>>>>>> origin/main
         </View>
 
         <Text style={styles.title}>{item.title}</Text>
         <Text style={styles.meta}>{formatNewsDate(item.pub_date)}</Text>
 
         <View style={styles.body}>
-          <Text style={[styles.paragraph, { fontSize: 15 * fontMul, lineHeight: 24 * fontMul }]}>
-            {item.content}
-          </Text>
+          {renderHighlightedContent()}
         </View>
 
         {quiz && (
@@ -321,6 +316,11 @@ const styles = StyleSheet.create({
   meta: { fontSize: 12, color: colors.textMuted, marginBottom: 20 },
   body: { marginBottom: 24 },
   paragraph: { fontSize: 15, lineHeight: 24, color: colors.textPrimary, marginBottom: 14 },
+  highlightedWord: {
+    color: colors.primary,
+    fontWeight: '800',
+    textDecorationLine: 'underline',
+  },
   quizBox: { backgroundColor: colors.white, borderWidth: 2, borderRadius: 18, padding: 18 },
   quizHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   quizLabel: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },

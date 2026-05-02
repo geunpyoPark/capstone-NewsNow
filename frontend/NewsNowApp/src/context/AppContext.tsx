@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { XP_CORRECT, XP_WRONG } from '../data/news';
 import { xpToLevel } from '../theme';
+import { API_BASE_URL } from '../config/api';
 
 type CatXp = Record<string, number>;
 type ScrappedWord = {
@@ -10,8 +11,6 @@ type ScrappedWord = {
   definition: string;
   articleId?: number | null;
 };
-
-const BASE_URL = 'https://mainrepo-production-4ca1.up.railway.app';
 
 export type FontScale = 'sm' | 'md' | 'lg';
 
@@ -98,6 +97,50 @@ function getWeekdayIndex(ts: number): number {
 const AppContext = createContext<AppContextValue | null>(null);
 
 const STORAGE_KEY = '@newspick/appstate/v1';
+const USER_PROGRESS_KEY = '@newspick/userProgress/v1';
+
+type UserProgress = Pick<
+  AppState,
+  'selectedCategories' | 'readIds' | 'scrappedIds' | 'catXp' | 'solvedQuizIds' | 'weekStartMs' | 'readWeekdays'
+>;
+
+const emptyProgress = (): UserProgress => ({
+  selectedCategories: [],
+  readIds: [],
+  scrappedIds: [],
+  catXp: {},
+  solvedQuizIds: [],
+  weekStartMs: 0,
+  readWeekdays: [false, false, false, false, false, false, false],
+});
+
+const pickProgress = (state: AppState): UserProgress => ({
+  selectedCategories: state.selectedCategories,
+  readIds: state.readIds,
+  scrappedIds: state.scrappedIds,
+  catXp: state.catXp,
+  solvedQuizIds: state.solvedQuizIds,
+  weekStartMs: state.weekStartMs,
+  readWeekdays: state.readWeekdays,
+});
+
+async function readUserProgressMap(): Promise<Record<string, UserProgress>> {
+  try {
+    const raw = await AsyncStorage.getItem(USER_PROGRESS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+async function saveUserProgress(email: string | null, progress: UserProgress): Promise<void> {
+  if (!email) return;
+  const map = await readUserProgressMap();
+  map[email] = progress;
+  await AsyncStorage.setItem(USER_PROGRESS_KEY, JSON.stringify(map));
+}
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AppState>(defaultState);
@@ -124,6 +167,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!state.ready) return;
     const { ready, ...rest } = state;
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(rest)).catch(() => {});
+    saveUserProgress(state.userEmail, pickProgress(state)).catch(() => {});
   }, [state]);
 
   const refreshScrapWords = useCallback(async () => {
@@ -132,7 +176,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
     try {
-      const res = await fetch(`${BASE_URL}/scrap/words/${encodeURIComponent(state.userEmail)}`);
+      const res = await fetch(`${API_BASE_URL}/scrap/words/${encodeURIComponent(state.userEmail)}`);
       const data = await res.json();
       const words = Array.isArray(data)
         ? data.map((item: any) => ({
@@ -153,8 +197,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [refreshScrapWords]);
 
   const setUserEmail = useCallback((email: string | null) => {
-    setState(s => ({ ...s, userEmail: email }));
-  }, []);
+    if (!email) {
+      setState(s => ({ ...s, userEmail: null }));
+      return;
+    }
+
+    const previousEmail = state.userEmail;
+    const previousProgress = pickProgress(state);
+    saveUserProgress(previousEmail, previousProgress)
+      .then(readUserProgressMap)
+      .then(map => {
+        const progress = map[email] ?? emptyProgress();
+        setState(s => ({ ...s, userEmail: email, ...progress }));
+      })
+      .catch(() => {
+        setState(s => ({ ...s, userEmail: email }));
+      });
+  }, [state]);
 
   const setUserName = useCallback((name: string | null) => {
     setState(s => ({ ...s, userName: name }));
@@ -226,7 +285,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     try {
-      const res = await fetch(`${BASE_URL}/scrap/word`, {
+      const res = await fetch(`${API_BASE_URL}/scrap/word`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -282,9 +341,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const logout = useCallback(async () => {
-    await AsyncStorage.removeItem(STORAGE_KEY);
-    setState({ ...defaultState, ready: true });
-  }, []);
+    await saveUserProgress(state.userEmail, pickProgress(state));
+    setState(s => ({
+      ...s,
+      userEmail: null,
+      userName: null,
+      scrappedWords: [],
+    }));
+  }, [state]);
 
   const value: AppContextValue = {
     ...state,
