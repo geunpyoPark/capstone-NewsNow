@@ -1,7 +1,15 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { XP_CORRECT, XP_WRONG } from '../data/news';
+import {
+  DEFAULT_CATEGORY_LEVELS,
+  normalizeCategoryLevelMap,
+  normalizeMainCategory,
+  XP_CORRECT,
+  XP_WRONG,
+  NewsItem,
+} from '../data/news';
 import { xpToLevel } from '../theme';
+import { API_BASE_URL } from '../config/api';
 
 type CatXp = Record<string, number>;
 type ScrappedWord = {
@@ -10,8 +18,6 @@ type ScrappedWord = {
   definition: string;
   articleId?: number | null;
 };
-
-const BASE_URL = 'https://mainrepo-production-4ca1.up.railway.app';
 
 export type FontScale = 'sm' | 'md' | 'lg';
 
@@ -35,8 +41,10 @@ type AppState = {
   selectedCategories: string[];
   readIds: string[];
   scrappedIds: string[];
+  scrappedArticles: NewsItem[];
   scrappedWords: ScrappedWord[];
   catXp: CatXp;
+  categoryBaseLevels: Record<string, number>;
   solvedQuizIds: string[];
   // 이번주 요일별 읽음 상태 (월=0 ~ 일=6).
   // weekStartMs는 현재 기록된 주의 월요일 00:00 타임스탬프.
@@ -50,8 +58,9 @@ type AppContextValue = AppState & {
   setUserEmail: (email: string | null) => void;
   setUserName: (name: string | null) => void;
   setSelectedCategories: (cats: string[]) => void;
+  setCategoryBaseLevels: (levels: Record<string, number>) => void;
   markRead: (newsId: string) => void;
-  toggleScrap: (newsId: string) => void;
+  toggleScrap: (newsId: string, article?: NewsItem) => void;
   isScrapped: (newsId: string) => boolean;
   scrapWord: (word: string, definition: string, articleId: number) => Promise<{ ok: boolean; message: string }>;
   isWordScrapped: (word: string, articleId?: number | null) => boolean;
@@ -59,6 +68,7 @@ type AppContextValue = AppState & {
   addQuizResult: (newsId: string, cat: string, correct: boolean) => { firstAttempt: boolean; delta: number; levelUp: boolean };
   getCategoryXp: (cat: string) => number;
   getCategoryLevel: (cat: string) => '하' | '중' | '상';
+  getCategoryNumericLevel: (cat: string) => number;
   /** 이번주(월~일)의 요일별 읽음 여부. 지난주 데이터면 전부 false로 반환. */
   getCurrentWeekReadDays: () => boolean[];
   setFontScale: (s: FontScale) => void;
@@ -72,8 +82,10 @@ const defaultState: AppState = {
   selectedCategories: [],
   readIds: [],
   scrappedIds: [],
+  scrappedArticles: [],
   scrappedWords: [],
   catXp: {},
+  categoryBaseLevels: DEFAULT_CATEGORY_LEVELS,
   solvedQuizIds: [],
   weekStartMs: 0,
   readWeekdays: [false, false, false, false, false, false, false],
@@ -98,6 +110,54 @@ function getWeekdayIndex(ts: number): number {
 const AppContext = createContext<AppContextValue | null>(null);
 
 const STORAGE_KEY = '@newspick/appstate/v1';
+const USER_PROGRESS_KEY = '@newspick/userProgress/v1';
+
+type UserProgress = Pick<
+  AppState,
+  'selectedCategories' | 'readIds' | 'scrappedIds' | 'scrappedArticles' | 'catXp' | 'categoryBaseLevels' | 'solvedQuizIds' | 'weekStartMs' | 'readWeekdays'
+>;
+
+const emptyProgress = (): UserProgress => ({
+  selectedCategories: [],
+  readIds: [],
+  scrappedIds: [],
+  scrappedArticles: [],
+  catXp: {},
+  categoryBaseLevels: DEFAULT_CATEGORY_LEVELS,
+  solvedQuizIds: [],
+  weekStartMs: 0,
+  readWeekdays: [false, false, false, false, false, false, false],
+});
+
+const pickProgress = (state: AppState): UserProgress => ({
+  selectedCategories: state.selectedCategories,
+  readIds: state.readIds,
+  scrappedIds: state.scrappedIds,
+  scrappedArticles: state.scrappedArticles,
+  catXp: state.catXp,
+  categoryBaseLevels: normalizeCategoryLevelMap(state.categoryBaseLevels),
+  solvedQuizIds: state.solvedQuizIds,
+  weekStartMs: state.weekStartMs,
+  readWeekdays: state.readWeekdays,
+});
+
+async function readUserProgressMap(): Promise<Record<string, UserProgress>> {
+  try {
+    const raw = await AsyncStorage.getItem(USER_PROGRESS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+async function saveUserProgress(email: string | null, progress: UserProgress): Promise<void> {
+  if (!email) return;
+  const map = await readUserProgressMap();
+  map[email] = progress;
+  await AsyncStorage.setItem(USER_PROGRESS_KEY, JSON.stringify(map));
+}
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AppState>(defaultState);
@@ -124,6 +184,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!state.ready) return;
     const { ready, ...rest } = state;
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(rest)).catch(() => {});
+    saveUserProgress(state.userEmail, pickProgress(state)).catch(() => {});
   }, [state]);
 
   const refreshScrapWords = useCallback(async () => {
@@ -132,7 +193,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
     try {
-      const res = await fetch(`${BASE_URL}/scrap/words/${encodeURIComponent(state.userEmail)}`);
+      const res = await fetch(`${API_BASE_URL}/scrap/words/${encodeURIComponent(state.userEmail)}`);
       const data = await res.json();
       const words = Array.isArray(data)
         ? data.map((item: any) => ({
@@ -153,8 +214,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [refreshScrapWords]);
 
   const setUserEmail = useCallback((email: string | null) => {
-    setState(s => ({ ...s, userEmail: email }));
-  }, []);
+    if (!email) {
+      setState(s => ({ ...s, userEmail: null }));
+      return;
+    }
+
+    const previousEmail = state.userEmail;
+    const previousProgress = pickProgress(state);
+    saveUserProgress(previousEmail, previousProgress)
+      .then(readUserProgressMap)
+      .then(map => {
+        const progress = map[email] ?? emptyProgress();
+        setState(s => ({
+          ...s,
+          userEmail: email,
+          ...progress,
+          categoryBaseLevels: normalizeCategoryLevelMap(progress.categoryBaseLevels),
+        }));
+        fetch(`${API_BASE_URL}/quiz/level/${encodeURIComponent(email)}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data?.has_result === false) return;
+            setState(s => ({
+              ...s,
+              categoryBaseLevels: normalizeCategoryLevelMap(data?.categories),
+            }));
+          })
+          .catch(() => {});
+      })
+      .catch(() => {
+        setState(s => ({ ...s, userEmail: email }));
+      });
+  }, [state]);
 
   const setUserName = useCallback((name: string | null) => {
     setState(s => ({ ...s, userName: name }));
@@ -162,6 +253,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const setSelectedCategories = useCallback((cats: string[]) => {
     setState(s => ({ ...s, selectedCategories: cats }));
+  }, []);
+
+  const setCategoryBaseLevels = useCallback((levels: Record<string, number>) => {
+    setState(s => ({ ...s, categoryBaseLevels: normalizeCategoryLevelMap(levels) }));
   }, []);
 
   const markRead = useCallback((newsId: string) => {
@@ -196,14 +291,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return state.readWeekdays;
   }, [state.weekStartMs, state.readWeekdays]);
 
-  const toggleScrap = useCallback((newsId: string) => {
+  const toggleScrap = useCallback((newsId: string, article?: NewsItem) => {
     setState(s => {
       const exists = s.scrappedIds.includes(newsId);
+      if (!exists && s.userEmail) {
+        fetch(`${API_BASE_URL}/scrap/article`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_email: s.userEmail, article_id: Number(newsId) }),
+        }).catch(() => {});
+      }
       return {
         ...s,
         scrappedIds: exists
           ? s.scrappedIds.filter(id => id !== newsId)
           : [...s.scrappedIds, newsId],
+        scrappedArticles: exists
+          ? s.scrappedArticles.filter(a => a.id !== newsId)
+          : article
+          ? [...s.scrappedArticles, article]
+          : s.scrappedArticles,
       };
     });
   }, []);
@@ -226,7 +333,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     try {
-      const res = await fetch(`${BASE_URL}/scrap/word`, {
+      const res = await fetch(`${API_BASE_URL}/scrap/word`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -251,16 +358,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addQuizResult = useCallback((newsId: string, cat: string, correct: boolean) => {
     const firstAttempt = !state.solvedQuizIds.includes(newsId);
     const delta = firstAttempt ? (correct ? XP_CORRECT : XP_WRONG) : 0;
+    const normalizedCat = normalizeMainCategory(cat);
     let levelUp = false;
 
     if (firstAttempt) {
       setState(s => {
-        const prevXp = s.catXp[cat] ?? 0;
+        const prevXp = s.catXp[normalizedCat] ?? 0;
         const nextXp = Math.max(0, prevXp + delta);
         levelUp = xpToLevel(nextXp) !== xpToLevel(prevXp) && nextXp > prevXp;
         return {
           ...s,
-          catXp: { ...s.catXp, [cat]: nextXp },
+          catXp: { ...s.catXp, [normalizedCat]: nextXp },
           solvedQuizIds: [...s.solvedQuizIds, newsId],
         };
       });
@@ -270,27 +378,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [state.solvedQuizIds]);
 
   const getCategoryXp = useCallback((cat: string) => {
-    return state.catXp[cat] ?? 0;
+    const normalizedCat = normalizeMainCategory(cat);
+    return Object.entries(state.catXp).reduce((sum, [key, xp]) => {
+      return normalizeMainCategory(key) === normalizedCat ? sum + xp : sum;
+    }, 0);
   }, [state.catXp]);
 
+  const getCategoryNumericLevel = useCallback((cat: string) => {
+    const normalizedCat = normalizeMainCategory(cat);
+    const xp = Object.entries(state.catXp).reduce((sum, [key, value]) => {
+      return normalizeMainCategory(key) === normalizedCat ? sum + value : sum;
+    }, 0);
+    const baseLevel = normalizeCategoryLevelMap(state.categoryBaseLevels)[normalizedCat] ?? 2;
+    return Math.min(4, Math.max(1, baseLevel + Math.floor(xp / 100)));
+  }, [state.catXp, state.categoryBaseLevels]);
+
   const getCategoryLevel = useCallback((cat: string) => {
-    return xpToLevel(state.catXp[cat] ?? 0);
-  }, [state.catXp]);
+    const level = getCategoryNumericLevel(cat);
+    if (level <= 1) return '하';
+    if (level === 2) return '중';
+    return '상';
+  }, [getCategoryNumericLevel]);
 
   const setFontScale = useCallback((s: FontScale) => {
     setState(prev => ({ ...prev, fontScale: s }));
   }, []);
 
   const logout = useCallback(async () => {
-    await AsyncStorage.removeItem(STORAGE_KEY);
-    setState({ ...defaultState, ready: true });
-  }, []);
+    await saveUserProgress(state.userEmail, pickProgress(state));
+    setState(s => ({
+      ...s,
+      userEmail: null,
+      userName: null,
+      scrappedWords: [],
+    }));
+  }, [state]);
 
   const value: AppContextValue = {
     ...state,
     setUserEmail,
     setUserName,
     setSelectedCategories,
+    setCategoryBaseLevels,
     markRead,
     toggleScrap,
     isScrapped,
@@ -300,6 +429,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addQuizResult,
     getCategoryXp,
     getCategoryLevel,
+    getCategoryNumericLevel,
     getCurrentWeekReadDays,
     setFontScale,
     logout,

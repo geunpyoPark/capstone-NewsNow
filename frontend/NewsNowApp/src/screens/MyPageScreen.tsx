@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -8,49 +8,56 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { colors, categoryColor, xpToLevel } from '../theme';
-import { MAIN_CATEGORIES, SCRAP_FOLDERS, NEWS_DATA } from '../data/news';
+import { colors, categoryColor } from '../theme';
+import { MAIN_CATEGORIES, SCRAP_FOLDERS, XP_PER_LEVEL } from '../data/news';
 import { useAppContext } from '../context/AppContext';
 import XPBar from '../components/XPBar';
-import LevelBadge from '../components/LevelBadge';
 
 type Props = {
   navigation: any;
 };
 
 export default function MyPageScreen({ navigation }: Props) {
+  const [showAllCategories, setShowAllCategories] = useState(false);
   const {
     userEmail,
     userName,
     selectedCategories,
     readIds,
-    scrappedIds,
+    scrappedArticles,
     scrappedWords,
     solvedQuizIds,
-    catXp,
+    getCategoryXp,
+    getCategoryNumericLevel,
     logout,
   } = useAppContext();
 
   const stats = useMemo(() => ({
     read: readIds.length,
-    scrapped: scrappedIds.length + scrappedWords.length,
+    scrapped: scrappedArticles.length + scrappedWords.length,
     solved: solvedQuizIds.length,
-  }), [readIds, scrappedIds, scrappedWords.length, solvedQuizIds]);
+  }), [readIds, scrappedArticles.length, scrappedWords.length, solvedQuizIds]);
 
   // 각 폴더별 실제 스크랩 개수 계산
   const folderCounts = useMemo(() => {
-    const scrappedNews = NEWS_DATA.filter(n => scrappedIds.includes(n.id));
     return SCRAP_FOLDERS.reduce<Record<string, number>>((acc, f) => {
       if (f.kind === 'word') {
         acc[f.id] = scrappedWords.length;
         return acc;
       }
-      acc[f.id] = scrappedNews.filter(n => f.categories.includes(n.cat)).length;
+      acc[f.id] = scrappedArticles.filter(n => f.categories.includes(n.cat)).length;
       return acc;
     }, {});
-  }, [scrappedIds, scrappedWords.length]);
+  }, [scrappedArticles, scrappedWords.length]);
 
-  const visibleCategories = selectedCategories.length ? selectedCategories : MAIN_CATEGORIES;
+  const selectedGrowthCategories = selectedCategories.length ? selectedCategories : MAIN_CATEGORIES;
+  const hiddenGrowthCategories = useMemo(() => {
+    const selectedSet = new Set(selectedGrowthCategories);
+    return MAIN_CATEGORIES.filter(cat => !selectedSet.has(cat));
+  }, [selectedGrowthCategories]);
+  const visibleCategories = showAllCategories
+    ? [...selectedGrowthCategories, ...hiddenGrowthCategories]
+    : selectedGrowthCategories;
 
   const displayName = useMemo(() => {
     if (userName && userName.trim()) return userName.trim();
@@ -62,7 +69,7 @@ export default function MyPageScreen({ navigation }: Props) {
   const handleLogout = () => {
     Alert.alert(
       '로그아웃',
-      '정말 로그아웃할까요? 모든 진행 상황이 초기화돼요.',
+      '정말 로그아웃할까요? 경험치와 퀴즈 기록은 계정별로 유지돼요.',
       [
         { text: '취소', style: 'cancel' },
         {
@@ -115,8 +122,8 @@ export default function MyPageScreen({ navigation }: Props) {
         <Text style={styles.sectionTitle}>카테고리별 성장</Text>
         <View style={styles.levelCard}>
           {visibleCategories.map(cat => {
-            const xp = catXp[cat] ?? 0;
-            const level = xpToLevel(xp);
+            const xp = getCategoryXp(cat);
+            const level = getCategoryNumericLevel(cat);
             return (
               <View key={cat} style={styles.levelRow}>
                 <View style={styles.levelHead}>
@@ -124,12 +131,25 @@ export default function MyPageScreen({ navigation }: Props) {
                     <View style={[styles.dot, { backgroundColor: categoryColor(cat) }]} />
                     <Text style={styles.levelName}>{cat}</Text>
                   </View>
-                  <LevelBadge level={level} />
+                  <View style={styles.levelBadge}>
+                    <Text style={styles.levelBadgeText}>Lv.{level}</Text>
+                  </View>
                 </View>
                 <XPBar cat={cat} xp={xp} compact hideCatLabel />
               </View>
             );
           })}
+          {hiddenGrowthCategories.length > 0 && (
+            <TouchableOpacity
+              style={styles.moreCategoriesBtn}
+              activeOpacity={0.82}
+              onPress={() => setShowAllCategories(prev => !prev)}
+            >
+              <Text style={styles.moreCategoriesText}>
+                {showAllCategories ? '접기' : `더보기 (${hiddenGrowthCategories.length})`}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* 스크랩 폴더 */}
@@ -227,6 +247,29 @@ const styles = StyleSheet.create({
   levelTitleRow: { flexDirection: 'row', alignItems: 'center' },
   dot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
   levelName: { fontSize: 13, fontWeight: '600', color: colors.textPrimary },
+  levelBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: colors.primaryLight,
+  },
+  levelBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.primary,
+  },
+  moreCategoriesBtn: {
+    marginTop: 8,
+    paddingVertical: 11,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: colors.primaryLight,
+  },
+  moreCategoriesText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.primary,
+  },
 
   folderList: {
     backgroundColor: colors.white,

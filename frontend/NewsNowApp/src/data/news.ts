@@ -75,6 +75,32 @@ export const CATEGORIES: Category[] = [
 // 메인 관심 카테고리 (기존 InterestSelect 4개와 동일)
 export const MAIN_CATEGORIES = ['정치', '경제', '사회', 'IT/과학'];
 
+export const normalizeMainCategory = (cat?: string): string => {
+  const key = (cat ?? '').replace(/\s/g, '');
+  if (key.includes('정치')) return '정치';
+  if (key.includes('경제') || key.includes('금융')) return '경제';
+  if (key.includes('사회')) return '사회';
+  if (key.includes('IT') || key.includes('과학')) return 'IT/과학';
+  return cat ?? '';
+};
+
+export const DEFAULT_CATEGORY_LEVELS: Record<string, number> = MAIN_CATEGORIES.reduce(
+  (acc, cat) => ({ ...acc, [cat]: 2 }),
+  {},
+);
+
+export const normalizeCategoryLevelMap = (
+  levels?: Record<string, number>,
+): Record<string, number> => {
+  const next = { ...DEFAULT_CATEGORY_LEVELS };
+  Object.entries(levels ?? {}).forEach(([cat, level]) => {
+    const normalizedCat = normalizeMainCategory(cat);
+    if (!MAIN_CATEGORIES.includes(normalizedCat)) return;
+    next[normalizedCat] = Math.min(4, Math.max(1, Math.round(level || 2)));
+  });
+  return next;
+};
+
 // 뉴스목록 필터
 export const CAT_FILTERS = ['전체', '정치', '경제', '사회', 'IT/과학'];
 
@@ -520,6 +546,6 @@ export const SCRAP_FOLDERS: ScrapFolder[] = [
 ];
 
 // 레벨별 XP 규칙
-export const XP_CORRECT = 30;
-export const XP_WRONG = -10;
+export const XP_CORRECT = 10;
+export const XP_WRONG = -5;
 export const XP_PER_LEVEL = 100;

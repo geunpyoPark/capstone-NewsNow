@@ -13,10 +13,10 @@ import {
 } from 'react-native';
 import { colors, categoryColor } from '../theme';
 import { useAppContext, FONT_SCALE_MULTIPLIER } from '../context/AppContext';
+import { NewsItem } from '../data/news';
 import LevelBadge from '../components/LevelBadge';
 import { formatNewsDate } from '../utils/date';
-
-const BASE_URL = 'https://mainrepo-production-4ca1.up.railway.app';
+import { API_BASE_URL } from '../config/api';
 
 type Props = {
   navigation: any;
@@ -52,15 +52,17 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
       try {
         let levelNum = 1;
         if (userEmail) {
-          const levelRes = await fetch(`${BASE_URL}/quiz/level/${userEmail}`);
+          const levelRes = await fetch(`${API_BASE_URL}/quiz/level/${userEmail}`);
           const levelData = await levelRes.json();
           levelNum = levelData.overall_level ?? 1;
         }
-        const res = await fetch(`${BASE_URL}/news/${newsId}?level=${levelNum}`);
+        const res = await fetch(`${API_BASE_URL}/news/${newsId}?level=${levelNum}`);
         const data = await res.json();
         setItem(data);
         markRead(String(newsId));
-        await fetch(`${BASE_URL}/news/${newsId}/view`, { method: 'PATCH' });
+
+        // 조회수 증가
+        await fetch(`${API_BASE_URL}/news/${newsId}/view`, { method: 'PATCH' });
       } catch (e) {
         console.error(e);
       } finally {
@@ -97,6 +99,10 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
   const highlights = Array.isArray(item.highlights) ? item.highlights : [];
 
   const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  const handleHighlightPress = (word: string, definition: string) => {
+    setSelectedHighlight({ word, definition });
+  };
 
   const renderHighlightedContent = () => {
     const content = item.content ?? '';
@@ -141,7 +147,7 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
             <Text
               key={`${segment}-${index}`}
               style={styles.highlightedWord}
-              onPress={() => setSelectedHighlight({ word: segment, definition })}
+              onPress={() => handleHighlightPress(segment, String(definition))}
             >
               {segment}
             </Text>
@@ -165,9 +171,9 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
     setXpDelta(firstAttempt ? delta : 0);
 
     if (correct && firstAttempt) {
-      Alert.alert('정답!', `+30 XP 획득했어요 🎉`);
+      Alert.alert('정답!', `+${delta} XP 획득했어요 🎉`);
     } else if (!correct && firstAttempt) {
-      Alert.alert('아쉬워요', `-10 XP 차감됐어요. 설명을 확인해 보세요.`);
+      Alert.alert('아쉬워요', `${delta} XP 차감됐어요. 설명을 확인해 보세요.`);
     }
   };
 
@@ -175,6 +181,17 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
   const xpSignedText = xpDelta > 0 ? `+${xpDelta}` : xpDelta < 0 ? `${xpDelta}` : null;
   const detailLevelStyle = levelStyle ?? '중';
   const detailLevelLabel = levelLabel ?? detailLevelStyle;
+  const articleForScrap: NewsItem = {
+    id: String(newsId),
+    title: item.title ?? '',
+    cat: item.category ?? '',
+    summary: item.content ?? '',
+    body: [],
+    views: item.view_count ?? 0,
+    time: formatNewsDate(item.pub_date, 'compact'),
+    level: (detailLevelStyle as NewsItem['level']),
+    color: '',
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -183,7 +200,7 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
           <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
         <Text style={styles.topTitle}>뉴스 상세</Text>
-        <TouchableOpacity onPress={() => toggleScrap(String(newsId))} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+        <TouchableOpacity onPress={() => toggleScrap(String(newsId), articleForScrap)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Text style={[styles.scrapIcon, scrapped && styles.scrapOn]}>
             {scrapped ? '★' : '☆'}
           </Text>

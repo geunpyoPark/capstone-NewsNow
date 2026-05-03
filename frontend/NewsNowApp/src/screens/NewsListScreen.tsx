@@ -15,8 +15,7 @@ import { useAppContext } from '../context/AppContext';
 import NewsCard from '../components/NewsCard';
 import CategoryPill from '../components/CategoryPill';
 import { formatNewsDate } from '../utils/date';
-
-const BASE_URL = 'https://mainrepo-production-4ca1.up.railway.app';
+import { API_BASE_URL } from '../config/api';
 
 type Props = {
   navigation: any;
@@ -32,28 +31,25 @@ export default function NewsListScreen({ navigation }: Props) {
   const [filter, setFilter] = useState<string>('전체');
   const [newsList, setNewsList] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const { readIds, isScrapped, toggleScrap, userEmail } = useAppContext();
+  const { readIds, isScrapped, toggleScrap, userEmail, getCategoryNumericLevel } = useAppContext();
 
   const loadNews = useCallback(async () => {
     try {
       setLoading(true);
 
       let levelNum = 2;
-      let categoryLevels: Record<string, number> = {};
-
       if (userEmail) {
-        const levelRes = await fetch(`${BASE_URL}/quiz/level/${userEmail}`);
+        const levelRes = await fetch(`${API_BASE_URL}/quiz/level/${userEmail}`);
         const levelData = await levelRes.json();
         levelNum = levelData.overall_level ?? 2;
-        categoryLevels = levelData.categories ?? {};
       }
 
       const cat = filter === '전체' ? '' : `&category=${encodeURIComponent(filter)}`;
-      const res = await fetch(`${BASE_URL}/news/?level=${levelNum}${cat}`);
+      const res = await fetch(`${API_BASE_URL}/news/?level=${levelNum}${cat}`);
       const data = await res.json();
 
       const mapped: NewsItem[] = data.map((a: any) => {
-        const catLevel = categoryLevels[a.category] ?? 2;
+        const catLevel = getCategoryNumericLevel(a.category);
         return {
           id: String(a.id),
           title: a.title,
@@ -73,7 +69,7 @@ export default function NewsListScreen({ navigation }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [filter, userEmail]);
+  }, [filter, getCategoryNumericLevel, userEmail]);
 
   useFocusEffect(
     useCallback(() => {
@@ -134,7 +130,7 @@ export default function NewsListScreen({ navigation }: Props) {
                 levelLabel: item.level,
               })
             }
-            onScrapPress={() => toggleScrap(item.id)}
+            onScrapPress={() => toggleScrap(item.id, item)}
           />
         )}
         ListEmptyComponent={
