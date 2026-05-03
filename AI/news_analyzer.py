@@ -89,6 +89,7 @@ class NewsAnalyzer:
         - 퀴즈는 각 레벨 본문을 읽은 학생이 바로 풀 수 있어야 한다.
         - 현재 레벨 본문에 실제로 등장하지 않는 단어, 표현, 고유명사로 문제를 내면 안 된다.
         - 특히 vocabulary 퀴즈는 반드시 그 레벨 본문에 실제 등장한 단어만 사용해야 한다.
+        - 단, level_1 또는 level_2에서 학생이 어려워할 만한 핵심 단어가 충분하지 않으면 억지로 vocabulary 문제를 만들지 말고, 본문 내용을 이해했는지 확인하는 context형 문제로 대체해도 된다.
         - vocabulary 퀴즈의 정답 단어는 문제 문장(question) 안에 작은따옴표(' ')로 반드시 직접 써라. 예: "글에 나온 '자립'의 뜻은?"
         - vocabulary 퀴즈에서 정답 단어가 보기의 뜻풀이로만 숨어 있고, question 문장에는 안 나오면 실패로 간주한다.
         - 각 레벨마다 아래 3문항을 따로 만들어라.
@@ -220,6 +221,60 @@ class NewsAnalyzer:
             if is_retryable_error(e):
                 raise e
             print(f"vocabulary 퀴즈 재생성 실패: {e}")
+            return None
+
+    @retry(
+        retry=retry_if_exception(is_retryable_error),
+        wait=wait_random_exponential(multiplier=1, max=120),
+        stop=stop_after_attempt(5),
+        reraise=True,
+        before_sleep=lambda retry_state: print(f"⏳ [API 할당량 초과] {retry_state.next_action.sleep:.1f}초 후 재시도합니다... (시도 {retry_state.attempt_number}/5)")
+    )
+    def regenerate_context_quiz(self, level_text, title=""):
+        """쉬운 레벨에서 vocabulary 대신 사용할 핵심 내용 파악형 퀴즈 1개를 다시 생성한다."""
+        prompt = f"""
+        너는 독해 교육 서비스 'NewsNow'의 시니어 에디터야.
+        아래 [레벨 본문]을 보고 학생이 글의 핵심 내용을 제대로 이해했는지 확인하는 context 퀴즈 1개만 만들어라.
+
+        [기사 제목]
+        {title}
+
+        [레벨 본문]
+        {level_text}
+
+        [규칙]
+        - vocabulary 문제가 아니라, 글의 맥락과 핵심 내용을 이해했는지 묻는 문제여야 한다.
+        - 문제 문장은 가능하면 "이 글의 핵심 내용은 무엇인가요?" 또는 이와 매우 비슷한 형태로 만들어.
+        - 단순 세부 사실 1개를 묻지 말고, 글 전체를 읽었는지 판단할 수 있는 문제여야 한다.
+        - 선택지는 반드시 4개.
+        - 정답 위치를 고정하지 마.
+        - 오답은 본문과 일부 비슷해 보여도 핵심 주제, 원인, 결과, 의미 중 하나를 틀리게 만들어.
+        - 초등학생도 읽을 수 있도록 짧고 쉬운 문장으로 써.
+        - explanation은 왜 정답이 맞는지 한두 문장으로 설명해.
+
+        [JSON 출력]
+        {{
+          "type": "context",
+          "question": "...",
+          "options": ["...", "...", "...", "..."],
+          "answer": 0,
+          "explanation": "..."
+        }}
+        """
+
+        try:
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                )
+            )
+            return json.loads(response.text)
+        except Exception as e:
+            if is_retryable_error(e):
+                raise e
+            print(f"context 퀴즈 재생성 실패: {e}")
             return None
 
     def _detect_article_type(self, title, news_text):

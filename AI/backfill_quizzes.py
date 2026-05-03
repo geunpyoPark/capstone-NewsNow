@@ -38,6 +38,9 @@ def main():
                         level_text,
                         level_highlights,
                     ),
+                    context_quiz_builder=lambda level_text, _level_highlights: analyzer.regenerate_context_quiz(
+                        level_text,
+                    ),
                 )
 
                 before = json.dumps(quizzes, ensure_ascii=False, sort_keys=True)
