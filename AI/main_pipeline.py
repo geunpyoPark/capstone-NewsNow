@@ -440,6 +440,10 @@ def generate_news_comic_result(
             level_highlights,
             title=title,
         ),
+        context_quiz_builder=lambda level_text, _level_highlights: analyzer.regenerate_context_quiz(
+            level_text,
+            title=title,
+        ),
     )
 
     levels = analysis.get("levels", {})
@@ -585,7 +589,6 @@ def run_news_now_pipeline(keyword, count, category):
 # ==========================================
 if __name__ == "__main__":
     tasks = [
-        {"category": "정치", "keyword": "국회 정책"},
         {"category": "경제", "keyword": "어린이 경제"},
         {"category": "사회", "keyword": "우리네 이웃"},
         {"category": "IT과학", "keyword": "AI 반도체 기술"}

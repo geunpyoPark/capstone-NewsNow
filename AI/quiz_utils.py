@@ -211,6 +211,30 @@ def _build_vocabulary_quiz(word, definition, level_text="", highlights=None):
     return _shuffle_quiz_options(quiz)
 
 
+def _build_context_fallback_quiz(level_text):
+    sentences = re.split(r"(?<=[.!?])\s+|(?<=[다요죠니다])\s+", str(level_text or "").strip())
+    sentences = [sentence.strip() for sentence in sentences if sentence.strip()]
+    first = sentences[0] if sentences else str(level_text or "").strip()
+    second = sentences[1] if len(sentences) > 1 else first
+
+    topic_fragment = first[:60].rstrip(" .,")
+    support_fragment = second[:60].rstrip(" .,")
+
+    quiz = {
+        "type": "context",
+        "question": "이 글의 핵심 내용으로 가장 알맞은 것은 무엇인가요?",
+        "options": [
+            f"글은 {topic_fragment}라는 내용을 중심으로 설명하고 있어요.",
+            f"글은 {support_fragment}와 관계없는 다른 사건만 다루고 있어요.",
+            "글은 누가 어떤 옷을 입었는지 같은 겉모습만 설명하고 있어요.",
+            "글은 사건의 핵심 이유나 의미 없이 짧은 감상만 전하고 있어요.",
+        ],
+        "answer": 0,
+        "explanation": "정답은 글에서 가장 중요하게 다룬 사건이나 내용을 가장 잘 설명한 보기예요.",
+    }
+    return _shuffle_quiz_options(quiz)
+
+
 def _pick_vocabulary_word(level_text, highlights):
     for item in highlights:
         if not isinstance(item, dict):
@@ -223,9 +247,10 @@ def _pick_vocabulary_word(level_text, highlights):
     return None, None
 
 
-def _normalize_level_quizzes(level_text, level_quizzes, level_highlights, vocabulary_quiz_builder=None):
+def _normalize_level_quizzes(level_key, level_text, level_quizzes, level_highlights, vocabulary_quiz_builder=None, context_quiz_builder=None):
     normalized = []
     source_items = level_quizzes if isinstance(level_quizzes, list) else []
+    prefer_context = level_key in {"level_1", "level_2"}
 
     if not source_items:
         if callable(vocabulary_quiz_builder):
@@ -233,7 +258,15 @@ def _normalize_level_quizzes(level_text, level_quizzes, level_highlights, vocabu
             if is_valid_vocabulary_quiz(regenerated, level_text, level_highlights):
                 return [_shuffle_quiz_options(regenerated)]
         word, definition = _pick_vocabulary_word(level_text, level_highlights)
-        return [_build_vocabulary_quiz(word, definition, level_text, level_highlights)] if word and definition else []
+        if word and definition:
+            return [_build_vocabulary_quiz(word, definition, level_text, level_highlights)]
+        if prefer_context:
+            if callable(context_quiz_builder):
+                regenerated_context = context_quiz_builder(level_text, level_highlights)
+                if isinstance(regenerated_context, dict):
+                    return [_shuffle_quiz_options(regenerated_context)]
+            return [_build_context_fallback_quiz(level_text)]
+        return []
 
     for item in source_items:
         if not isinstance(item, dict):
@@ -263,13 +296,20 @@ def _normalize_level_quizzes(level_text, level_quizzes, level_highlights, vocabu
         word, definition = _pick_vocabulary_word(level_text, level_highlights)
         if word and definition:
             normalized.append(_build_vocabulary_quiz(word, definition, level_text, level_highlights))
+        elif prefer_context:
+            if callable(context_quiz_builder):
+                regenerated_context = context_quiz_builder(level_text, level_highlights)
+                if isinstance(regenerated_context, dict):
+                    normalized.append(_shuffle_quiz_options(regenerated_context))
+                    continue
+            normalized.append(_build_context_fallback_quiz(level_text))
         else:
             normalized.append(item)
 
     return normalized[:3]
 
 
-def normalize_quizzes(levels, quizzes, highlights, vocabulary_quiz_builder=None):
+def normalize_quizzes(levels, quizzes, highlights, vocabulary_quiz_builder=None, context_quiz_builder=None):
     """본문에 없는 vocabulary 퀴즈를 자동 교체한다."""
     normalized = {}
     levels = levels if isinstance(levels, dict) else {}
@@ -293,10 +333,12 @@ def normalize_quizzes(levels, quizzes, highlights, vocabulary_quiz_builder=None)
             level_highlights = highlight_map.get("level_1", [])
 
         normalized[level_key] = _normalize_level_quizzes(
+            level_key,
             level_text,
             level_quizzes,
             level_highlights,
             vocabulary_quiz_builder=vocabulary_quiz_builder,
+            context_quiz_builder=context_quiz_builder,
         )
 
     return normalized
