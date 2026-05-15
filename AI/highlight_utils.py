@@ -36,6 +36,9 @@ LEVEL_4_TOO_BASIC_TERMS = {
     "연속성", "행정력", "거주권", "피고인", "실효성", "안정화", "가역성",
     "점유율", "신경전", "포인트", "불확실성", "패러다임", "권선징악", "근원적",
 }
+LEVEL_4_WEAK_TERMS = {
+    "해상풍력", "기숙학교", "취약 계층", "최하위 계층",
+}
 HIGHLIGHT_PRIORITY_TERMS = (
     "금리", "물가", "환율", "관세", "수출", "수입", "무역", "예산", "복지",
     "규제", "법안", "국회", "외교", "안보", "협상", "제재", "휴전", "반도체", "배터리",
@@ -50,6 +53,8 @@ ADVANCED_TERM_HINTS = (
     "정책 강화", "스타트업 육성", "선도형 성장", "고용 변화", "산학협력",
     "인적 자원", "효율적 배분", "해상풍력", "기부 협약", "취약 계층",
     "협약식", "기숙학교", "카스트 제도", "달리트", "최하위 계층", "EPC", "IPO",
+    "사단법인", "비인권적 환경", "비인권적인 환경", "교육 환경 개선 사업",
+    "교육 및 주거 환경 개선 사업", "사회적 책임", "기업의 사회적 책임",
     "수익 모델", "투자 전략", "재무 구조", "상장 추진", "반도체 수요",
     "수의계약", "아키텍처", "공급망", "워크로드", "변곡점", "비확산",
 )
@@ -63,6 +68,13 @@ TERM_DEFINITIONS = {
     "최하위 계층": "사회 구조 안에서 가장 낮은 지위에 놓인 집단을 뜻해요.",
     "취약 계층": "경제적·사회적으로 보호와 지원이 더 필요한 사람들을 뜻해요.",
     "EPC": "설계, 조달, 시공을 한 회사가 함께 맡아 진행하는 사업 방식을 뜻해요.",
+    "사단법인": "공익이나 공동 목적을 위해 사람들이 모여 법적으로 설립한 단체예요.",
+    "비인권적 환경": "사람으로서 보장받아야 할 기본 권리가 충분히 지켜지지 않는 환경을 뜻해요.",
+    "비인권적인 환경": "사람으로서 보장받아야 할 기본 권리가 충분히 지켜지지 않는 환경을 뜻해요.",
+    "교육 환경 개선 사업": "학생들이 더 나은 조건에서 공부할 수 있도록 시설이나 학습 공간을 고치는 사업이에요.",
+    "교육 및 주거 환경 개선 사업": "학생들이 공부하고 생활하는 공간을 더 나은 상태로 고치는 지원 사업이에요.",
+    "사회적 책임": "기업이나 단체가 이익뿐 아니라 사회에 미치는 영향까지 고려해야 한다는 뜻이에요.",
+    "기업의 사회적 책임": "기업이 이익 추구와 함께 사회 문제 해결이나 공익에도 책임을 져야 한다는 뜻이에요.",
     "IPO": "기업이 주식을 시장에 공개해 투자자들이 사고팔 수 있게 하는 절차예요.",
     "수익 모델": "기업이나 서비스가 돈을 버는 구조를 뜻해요.",
     "재무 구조": "기업이 가진 돈, 빚, 자본이 어떤 비율로 이루어져 있는지를 뜻해요.",
@@ -243,6 +255,8 @@ def _is_too_basic_for_level(word, level_num):
     cleaned = clean_highlight_word(word)
     if cleaned in LEVEL_4_TOO_BASIC_TERMS:
         return True
+    if cleaned in LEVEL_4_WEAK_TERMS:
+        return True
     if not _is_curated_term(cleaned) and re.search(r"(화|성|적)$", cleaned):
         return True
     return len(cleaned) <= 2 and cleaned.upper() != "EPC"
@@ -258,6 +272,8 @@ def _highlight_score(word, level_text, level_num):
         score += 5
     if re.search(r"[A-Za-z]", cleaned) and re.search(r"[가-힣]", cleaned):
         score += 4
+    elif re.fullmatch(r"[A-Z]{2,}", cleaned):
+        score += 6
     if len(cleaned) >= 5:
         score += 4
     elif len(cleaned) >= 4:
@@ -393,8 +409,6 @@ def normalize_highlights(levels, highlights):
                         word,
                     ),
                 })
-                if len(cleaned) >= HIGHLIGHT_MAX_COUNT:
-                    break
 
         cleaned.sort(key=lambda item: (-_highlight_score(item["word"], level_text, level_num), -len(item["word"]), item["word"]))
 
@@ -409,6 +423,8 @@ def normalize_highlights(levels, highlights):
                 normalized_word = _normalize_word_for_match(word)
                 if not definition or normalized_word in seen_words:
                     continue
+                if any(normalized_word in seen_word or seen_word in normalized_word for seen_word in seen_words):
+                    continue
                 if not _is_valid_highlight_word(word, level_text):
                     continue
                 if _is_too_basic_for_level(word, level_num):
@@ -418,8 +434,6 @@ def normalize_highlights(levels, highlights):
                     "word": word,
                     "definition": definition,
                 })
-                if len(cleaned) >= HIGHLIGHT_MAX_COUNT:
-                    break
 
         cleaned.sort(key=lambda item: (-_highlight_score(item["word"], level_text, level_num), -len(item["word"]), item["word"]))
 
