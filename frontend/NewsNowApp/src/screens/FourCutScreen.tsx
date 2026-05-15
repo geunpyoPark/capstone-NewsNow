@@ -77,7 +77,7 @@ export default function FourCutScreen({ navigation }: Props) {
             <TouchableOpacity
               style={styles.card}
               activeOpacity={0.85}
-              onPress={() => navigation.navigate('FourCutDetail', { fourCutId: item.id })}
+              onPress={() => navigation.navigate('FourCutDetail', { fourCutId: item.id, initialItem: item })}
             >
               <View style={[styles.thumb, { backgroundColor: color }]}>
                 {item.comic_path ? (

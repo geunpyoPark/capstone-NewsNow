@@ -173,7 +173,7 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
       <View style={styles.container}>
         <View style={styles.topArea}>
           <Image
-            source={require('../assets/images/nplogo.png')}
+            source={require('../assets/images/logo.png')}
             style={styles.logoImage}
             resizeMode="contain"
           />

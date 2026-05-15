@@ -12,8 +12,9 @@ if not raw_database_url:
     )
 
 DATABASE_URL = raw_database_url.replace("postgresql://", "postgresql+asyncpg://")
+SQL_ECHO = os.getenv("SQL_ECHO", "false").lower() == "true"
 
-engine = create_async_engine(DATABASE_URL, echo=True)
+engine = create_async_engine(DATABASE_URL, echo=SQL_ECHO)
 
 AsyncSessionLocal = sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False

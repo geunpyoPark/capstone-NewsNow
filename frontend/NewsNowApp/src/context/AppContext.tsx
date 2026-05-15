@@ -10,6 +10,7 @@ import {
 } from '../data/news';
 import { xpToLevel } from '../theme';
 import { API_BASE_URL } from '../config/api';
+import { clearOnboarded } from '../utils/onboarding';
 
 type CatXp = Record<string, number>;
 type ScrappedWord = {
@@ -46,6 +47,8 @@ type AppState = {
   catXp: CatXp;
   categoryBaseLevels: Record<string, number>;
   solvedQuizIds: string[];
+  todayReadDate: string;
+  todayReadIds: string[];
   // 이번주 요일별 읽음 상태 (월=0 ~ 일=6).
   // weekStartMs는 현재 기록된 주의 월요일 00:00 타임스탬프.
   // Date.now()로 계산한 월요일이 다르면 새 주가 된 것으로 보고 리셋한다.
@@ -69,10 +72,12 @@ type AppContextValue = AppState & {
   getCategoryXp: (cat: string) => number;
   getCategoryLevel: (cat: string) => '하' | '중' | '상';
   getCategoryNumericLevel: (cat: string) => number;
+  getTodayReadCount: () => number;
   /** 이번주(월~일)의 요일별 읽음 여부. 지난주 데이터면 전부 false로 반환. */
   getCurrentWeekReadDays: () => boolean[];
   setFontScale: (s: FontScale) => void;
   logout: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
 };
 
 const defaultState: AppState = {
@@ -87,6 +92,8 @@ const defaultState: AppState = {
   catXp: {},
   categoryBaseLevels: DEFAULT_CATEGORY_LEVELS,
   solvedQuizIds: [],
+  todayReadDate: '',
+  todayReadIds: [],
   weekStartMs: 0,
   readWeekdays: [false, false, false, false, false, false, false],
   fontScale: 'md',
@@ -107,6 +114,14 @@ function getWeekdayIndex(ts: number): number {
   return (new Date(ts).getDay() + 6) % 7;
 }
 
+function getLocalDateKey(ts: number = Date.now()): string {
+  const d = new Date(ts);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 const AppContext = createContext<AppContextValue | null>(null);
 
 const STORAGE_KEY = '@newspick/appstate/v1';
@@ -114,7 +129,7 @@ const USER_PROGRESS_KEY = '@newspick/userProgress/v1';
 
 type UserProgress = Pick<
   AppState,
-  'selectedCategories' | 'readIds' | 'scrappedIds' | 'scrappedArticles' | 'catXp' | 'categoryBaseLevels' | 'solvedQuizIds' | 'weekStartMs' | 'readWeekdays'
+  'selectedCategories' | 'readIds' | 'scrappedIds' | 'scrappedArticles' | 'catXp' | 'categoryBaseLevels' | 'solvedQuizIds' | 'todayReadDate' | 'todayReadIds' | 'weekStartMs' | 'readWeekdays'
 >;
 
 const emptyProgress = (): UserProgress => ({
@@ -125,6 +140,8 @@ const emptyProgress = (): UserProgress => ({
   catXp: {},
   categoryBaseLevels: DEFAULT_CATEGORY_LEVELS,
   solvedQuizIds: [],
+  todayReadDate: '',
+  todayReadIds: [],
   weekStartMs: 0,
   readWeekdays: [false, false, false, false, false, false, false],
 });
@@ -137,6 +154,8 @@ const pickProgress = (state: AppState): UserProgress => ({
   catXp: state.catXp,
   categoryBaseLevels: normalizeCategoryLevelMap(state.categoryBaseLevels),
   solvedQuizIds: state.solvedQuizIds,
+  todayReadDate: state.todayReadDate,
+  todayReadIds: state.todayReadIds,
   weekStartMs: state.weekStartMs,
   readWeekdays: state.readWeekdays,
 });
@@ -156,6 +175,13 @@ async function saveUserProgress(email: string | null, progress: UserProgress): P
   if (!email) return;
   const map = await readUserProgressMap();
   map[email] = progress;
+  await AsyncStorage.setItem(USER_PROGRESS_KEY, JSON.stringify(map));
+}
+
+async function clearUserProgress(email: string | null): Promise<void> {
+  if (!email) return;
+  const map = await readUserProgressMap();
+  delete map[email];
   await AsyncStorage.setItem(USER_PROGRESS_KEY, JSON.stringify(map));
 }
 
@@ -261,10 +287,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const markRead = useCallback((newsId: string) => {
     setState(s => {
-      if (s.readIds.includes(newsId)) return s;
-
       // 이번주 요일 체크: 주가 바뀌었으면 flags 리셋 후 오늘 요일만 true
       const now = Date.now();
+      const todayKey = getLocalDateKey(now);
       const currentWeekStart = getMondayStartMs(now);
       const todayIdx = getWeekdayIndex(now);
       const weekChanged = s.weekStartMs !== currentWeekStart;
@@ -272,15 +297,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ? [false, false, false, false, false, false, false]
         : [...s.readWeekdays];
       nextWeekdays[todayIdx] = true;
+      const todayIds = s.todayReadDate === todayKey ? s.todayReadIds : [];
+      const nextTodayReadIds = todayIds.includes(newsId)
+        ? todayIds
+        : [...todayIds, newsId];
+      const nextReadIds = s.readIds.includes(newsId)
+        ? s.readIds
+        : [...s.readIds, newsId];
 
       return {
         ...s,
-        readIds: [...s.readIds, newsId],
+        readIds: nextReadIds,
+        todayReadDate: todayKey,
+        todayReadIds: nextTodayReadIds,
         weekStartMs: currentWeekStart,
         readWeekdays: nextWeekdays,
       };
     });
   }, []);
+
+  const getTodayReadCount = useCallback((): number => {
+    if (state.todayReadDate !== getLocalDateKey()) {
+      return 0;
+    }
+    return state.todayReadIds.length;
+  }, [state.todayReadDate, state.todayReadIds]);
 
   const getCurrentWeekReadDays = useCallback((): boolean[] => {
     const currentWeekStart = getMondayStartMs(Date.now());
@@ -414,6 +455,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }));
   }, [state]);
 
+  const deleteAccount = useCallback(async () => {
+    const email = state.userEmail;
+    if (email) {
+      await clearOnboarded(email);
+      await clearUserProgress(email);
+    }
+    setState({
+      ...defaultState,
+      ready: true,
+      fontScale: state.fontScale,
+    });
+  }, [state.fontScale, state.userEmail]);
+
   const value: AppContextValue = {
     ...state,
     setUserEmail,
@@ -430,9 +484,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getCategoryXp,
     getCategoryLevel,
     getCategoryNumericLevel,
+    getTodayReadCount,
     getCurrentWeekReadDays,
     setFontScale,
     logout,
+    deleteAccount,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -19,7 +19,12 @@ type Props = {
 
 export default function ScrapFolderScreen({ navigation, route }: Props) {
   const { folderName, folderCategories, folderKind } = route.params ?? {};
-  const { scrappedArticles, readIds, toggleScrap, isScrapped, scrappedWords } = useAppContext();
+  const { scrappedArticles, readIds, toggleScrap, isScrapped, scrappedWords, getCategoryNumericLevel } = useAppContext();
+
+  const toLevelLabel = (level: number) => {
+    const normalized = Math.min(4, Math.max(1, Math.round(level || 1)));
+    return `Lv${normalized}`;
+  };
 
   const newsItems = useMemo((): NewsItem[] => {
     if (folderKind === 'word') return [];
@@ -84,9 +89,14 @@ export default function ScrapFolderScreen({ navigation, route }: Props) {
           renderItem={({ item }) => (
             <NewsCard
               item={item}
+              levelLabel={toLevelLabel(getCategoryNumericLevel(item.cat))}
               read={readIds.includes(item.id)}
               scrapped={isScrapped(item.id)}
-              onPress={() => navigation.navigate('NewsDetail', { newsId: item.id })}
+              onPress={() => navigation.navigate('NewsDetail', {
+                newsId: item.id,
+                levelStyle: item.level,
+                levelLabel: toLevelLabel(getCategoryNumericLevel(item.cat)),
+              })}
               onScrapPress={() => toggleScrap(item.id)}
             />
           )}

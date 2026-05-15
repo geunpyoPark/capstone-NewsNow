@@ -23,6 +23,19 @@ type Props = {
   route: any;
 };
 
+const detailCache = new Map<string, any>();
+
+function resolveLevelNumber(levelLabel?: string, levelStyle?: string) {
+  const labelMatch = String(levelLabel ?? '').match(/\d+/);
+  if (labelMatch) {
+    return Math.min(4, Math.max(1, Number(labelMatch[0])));
+  }
+  if (levelStyle === '하') return 1;
+  if (levelStyle === '중') return 2;
+  if (levelStyle === '상') return 3;
+  return 1;
+}
+
 export default function NewsDetailScreen({ navigation, route }: Props) {
   const { newsId, levelStyle, levelLabel } = route.params;
   const {
@@ -34,7 +47,6 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
     addQuizResult,
     solvedQuizIds,
     fontScale,
-    userEmail,
   } = useAppContext();
 
   const fontMul = FONT_SCALE_MULTIPLIER[fontScale];
@@ -48,29 +60,43 @@ export default function NewsDetailScreen({ navigation, route }: Props) {
   const alreadySolved = solvedQuizIds.includes(String(newsId));
 
   useEffect(() => {
+    let mounted = true;
+
     const loadDetail = async () => {
+      const levelNum = resolveLevelNumber(levelLabel, levelStyle);
+      const cacheKey = `${newsId}:${levelNum}`;
+      const cached = detailCache.get(cacheKey);
+      if (cached) {
+        setItem(cached);
+        setLoading(false);
+        markRead(String(newsId));
+      } else {
+        setLoading(true);
+      }
+
       try {
-        let levelNum = 1;
-        if (userEmail) {
-          const levelRes = await fetch(`${API_BASE_URL}/quiz/level/${userEmail}`);
-          const levelData = await levelRes.json();
-          levelNum = levelData.overall_level ?? 1;
-        }
         const res = await fetch(`${API_BASE_URL}/news/${newsId}?level=${levelNum}`);
         const data = await res.json();
+        detailCache.set(cacheKey, data);
+        if (!mounted) return;
         setItem(data);
         markRead(String(newsId));
 
-        // 조회수 증가
-        await fetch(`${API_BASE_URL}/news/${newsId}/view`, { method: 'PATCH' });
+        // 조회수 증가는 화면 표시를 막지 않도록 백그라운드에서 처리한다.
+        fetch(`${API_BASE_URL}/news/${newsId}/view`, { method: 'PATCH' }).catch(() => {});
       } catch (e) {
         console.error(e);
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
     loadDetail();
-  }, [newsId, userEmail, markRead]);
+    return () => {
+      mounted = false;
+    };
+  }, [newsId, levelLabel, levelStyle, markRead]);
 
   if (loading) {
     return (

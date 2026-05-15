@@ -7,13 +7,11 @@ from psycopg2.extras import Json
 from ai_db import get_db_connection
 from highlight_utils import normalize_highlights
 from quiz_utils import normalize_quizzes
-from news_analyzer import NewsAnalyzer
 
 
 def main():
     updated = 0
     scanned = 0
-    analyzer = NewsAnalyzer()
 
     with get_db_connection() as conn:
         with conn.cursor() as cur:
@@ -34,13 +32,6 @@ def main():
                     levels,
                     quizzes,
                     normalized_highlights,
-                    vocabulary_quiz_builder=lambda level_text, level_highlights: analyzer.regenerate_vocabulary_quiz(
-                        level_text,
-                        level_highlights,
-                    ),
-                    context_quiz_builder=lambda level_text, _level_highlights: analyzer.regenerate_context_quiz(
-                        level_text,
-                    ),
                 )
 
                 before = json.dumps(quizzes, ensure_ascii=False, sort_keys=True)

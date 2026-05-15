@@ -56,6 +56,15 @@ def _display_title(title: str | None, level: int):
     return normalized
 
 
+def _summary_text(content: str | None, max_length: int = 180):
+    if not content:
+        return ""
+    compact = " ".join(str(content).split())
+    if len(compact) <= max_length:
+        return compact
+    return compact[:max_length].rstrip() + "..."
+
+
 def _resolve_highlights_by_level(highlights, level: int):
     if not highlights:
         return []
@@ -93,30 +102,29 @@ def _resolve_quizzes_by_level(quizzes, level: int):
 async def get_news_list(category: str = None, level: int = 1):
     async with AsyncSessionLocal() as session:
         normalized_category = _normalize_category_for_query(category)
+        level_key = f"level_{level}"
+        level_content = ArticleVersion.levels[level_key].as_string().label("content")
+        stmt = select(NewsArticle, level_content).outerjoin(
+            ArticleVersion,
+            ArticleVersion.article_id == NewsArticle.id,
+        )
         if category:
-            result = await session.execute(
-                select(NewsArticle).where(NewsArticle.category == normalized_category)
-            )
-        else:
-            result = await session.execute(select(NewsArticle))
+            stmt = stmt.where(NewsArticle.category == normalized_category)
+        stmt = stmt.order_by(desc(NewsArticle.created_at))
 
-        articles = result.scalars().all()
+        result = await session.execute(stmt)
+        rows = result.all()
 
         news_list = []
-        for a in articles:
-            version = await session.execute(
-                select(ArticleVersion).where(ArticleVersion.article_id == a.id)
-            )
-            v = version.scalar_one_or_none()
-
+        for article, content in rows:
             news_list.append({
-                "id": a.id,
-                "title": _display_title(a.title, level),
-                "category": _display_category(a.category),
-                "pub_date": a.pub_date,
-                "comic_path": a.comic_path,
-                "content": v.levels.get(f"level_{level}", "") if v else "",
-                "view_count": a.view_count or 0,
+                "id": article.id,
+                "title": _display_title(article.title, level),
+                "category": _display_category(article.category),
+                "pub_date": article.pub_date,
+                "comic_path": article.comic_path,
+                "content": _summary_text(content),
+                "view_count": article.view_count or 0,
             })
 
         return news_list
@@ -124,17 +132,16 @@ async def get_news_list(category: str = None, level: int = 1):
 
 async def get_news_detail(article_id: int, level: int = 1):
     async with AsyncSessionLocal() as session:
-        article = await session.get(NewsArticle, article_id)
-
-        version = await session.execute(
-            select(ArticleVersion).where(ArticleVersion.article_id == article_id)
+        result = await session.execute(
+            select(NewsArticle, ArticleVersion, ArticleAsset)
+            .outerjoin(ArticleVersion, ArticleVersion.article_id == NewsArticle.id)
+            .outerjoin(ArticleAsset, ArticleAsset.article_id == NewsArticle.id)
+            .where(NewsArticle.id == article_id)
         )
-        asset = await session.execute(
-            select(ArticleAsset).where(ArticleAsset.article_id == article_id)
-        )
-
-        v = version.scalar_one_or_none()
-        a = asset.scalar_one_or_none()
+        row = result.first()
+        if not row:
+            return None
+        article, version, asset = row
 
         return {
             "id": article.id,
@@ -142,9 +149,9 @@ async def get_news_detail(article_id: int, level: int = 1):
             "category": _display_category(article.category),
             "pub_date": article.pub_date,
             "comic_path": article.comic_path,
-            "content": v.levels.get(f"level_{level}", "") if v else "",
-            "quizzes": _resolve_quizzes_by_level(a.quizzes, level) if a else [],
-            "highlights": _resolve_highlights_by_level(a.highlights, level) if a else []
+            "content": version.levels.get(f"level_{level}", "") if version else "",
+            "quizzes": _resolve_quizzes_by_level(asset.quizzes, level) if asset else [],
+            "highlights": _resolve_highlights_by_level(asset.highlights, level) if asset else []
         }
 
 

@@ -9,11 +9,12 @@ type Props = {
   onPress?: () => void;
   read?: boolean;
   scrapped?: boolean;
+  levelLabel?: string;
   onScrapPress?: () => void;
 };
 
 // 타이포그래피 중심 카드: 왼쪽 카테고리 컬러 사이드바 + 제목 중심
-export default function NewsCard({ item, onPress, read, scrapped, onScrapPress }: Props) {
+export default function NewsCard({ item, onPress, read, scrapped, levelLabel, onScrapPress }: Props) {
   const color = categoryColor(item.cat);
 
   return (
@@ -29,7 +30,7 @@ export default function NewsCard({ item, onPress, read, scrapped, onScrapPress }
         {/* 카테고리 행 */}
         <View style={styles.catRow}>
           <Text style={[styles.catText, { color }]}>{item.cat}</Text>
-          <LevelBadge level={item.level} />
+          <LevelBadge level={item.level} label={levelLabel} />
           {read && (
             <View style={styles.readChip}>
               <Text style={styles.readChipText}>읽음</Text>

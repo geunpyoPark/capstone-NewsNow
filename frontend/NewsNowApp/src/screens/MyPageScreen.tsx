@@ -30,6 +30,7 @@ export default function MyPageScreen({ navigation }: Props) {
     getCategoryXp,
     getCategoryNumericLevel,
     logout,
+    deleteAccount,
   } = useAppContext();
 
   const stats = useMemo(() => ({
@@ -77,6 +78,24 @@ export default function MyPageScreen({ navigation }: Props) {
           style: 'destructive',
           onPress: async () => {
             await logout();
+            navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+          },
+        },
+      ],
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      '탈퇴하기',
+      '이 기기에서 현재 계정의 관심 카테고리, 초기 퀴즈, 읽은 기록, 스크랩 기록을 삭제하고 처음 화면으로 돌아갈까요?',
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '탈퇴하기',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteAccount();
             navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
           },
         },
@@ -182,6 +201,10 @@ export default function MyPageScreen({ navigation }: Props) {
         {/* 로그아웃 */}
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>
           <Text style={styles.logoutText}>로그아웃</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.deleteAccountBtn} onPress={handleDeleteAccount} activeOpacity={0.85}>
+          <Text style={styles.deleteAccountText}>탈퇴하기</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -304,4 +327,14 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   logoutText: { color: colors.textSecondary, fontWeight: '600', fontSize: 14 },
+  deleteAccountBtn: {
+    marginTop: 10,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: '#FFF5F5',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  deleteAccountText: { color: '#DC2626', fontWeight: '700', fontSize: 14 },
 });

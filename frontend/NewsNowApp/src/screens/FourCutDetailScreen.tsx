@@ -20,13 +20,14 @@ type Props = {
 const { width: SCREEN_W } = Dimensions.get('window');
 
 export default function FourCutDetailScreen({ navigation, route }: Props) {
-  const { fourCutId } = route.params;
-  const [item, setItem] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { fourCutId, initialItem } = route.params;
+  const [item, setItem] = useState<any>(initialItem ?? null);
+  const [loading, setLoading] = useState(!initialItem);
   const [page, setPage] = useState(0);
 
   useEffect(() => {
     const loadDetail = async () => {
+      if (initialItem) return;
       try {
         const res = await fetch(`${API_BASE_URL}/news/${fourCutId}`);
         const data = await res.json();

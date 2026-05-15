@@ -16,11 +16,45 @@ logger = logging.getLogger(__name__)
 # .env 파일 로드
 load_dotenv()
 
+class InvalidAIOutputError(ValueError):
+    """재시도하면 개선될 수 있는 AI 출력 품질 오류."""
+
 def is_retryable_error(exception):
     """429(할당량 초과) 및 503(서버 과부하) 에러인 경우에 재시도합니다."""
+    if isinstance(exception, InvalidAIOutputError):
+        return True
     error_msg = str(exception).lower()
     retryable_keywords = ["429", "resource_exhausted", "quota", "503", "unavailable", "high demand"]
     return any(keyword in error_msg for keyword in retryable_keywords)
+
+def contains_invalid_replacement_char(value):
+    """AI 응답에 깨진 문자(�)가 섞였는지 재귀적으로 확인한다."""
+    if isinstance(value, str):
+        return "\ufffd" in value
+    if isinstance(value, dict):
+        return any(contains_invalid_replacement_char(item) for item in value.values())
+    if isinstance(value, list):
+        return any(contains_invalid_replacement_char(item) for item in value)
+    return False
+
+def contains_disallowed_editorial_phrase(value):
+    """뉴스 재구성에 부적절한 홍보성/추론성 표현을 확인한다."""
+    disallowed_phrases = [
+        "나눔의 의미를 다졌",
+        "의지를 보였",
+        "사회적 책임을 다하기 위해",
+        "세상을 아름답게",
+        "관측이 지배적",
+        "힘을 얻고 있",
+        "논쟁을 불러일으",
+    ]
+    if isinstance(value, str):
+        return any(phrase in value for phrase in disallowed_phrases)
+    if isinstance(value, dict):
+        return any(contains_disallowed_editorial_phrase(item) for item in value.values())
+    if isinstance(value, list):
+        return any(contains_disallowed_editorial_phrase(item) for item in value)
+    return False
 
 class NewsAnalyzer:
     """Gemini를 이용해 기사 분석 결과를 JSON 구조로 반환하는 래퍼."""
@@ -69,13 +103,18 @@ class NewsAnalyzer:
         3. **퀴즈 4지선다 고정**: 모든 퀴즈는 반드시 **4개의 선택지**로만 구성해.
         4. **선택지 길이 균형**: 특히 'summary' 퀴즈에서 정답만 길어지지 않도록 모든 선택지의 글자 수를 비슷하게 맞춰.
         5. **메타 데이터 삭제**: 기자명, 매체명 등 출처 정보는 1%도 남기지 마.
-        6. **핵심 단어 추출 (Highlights)**: 각 레벨 본문에 실제로 등장하는 단어 중 사용자가 어려워할 만한 경제/시사 용어 4~6개를 레벨별로 따로 추출해. 사전적 정의가 아닌, 그 레벨 본문 [맥락]에 맞춘 아주 쉬운 풀이(툴팁용)를 제공해줘.
+        6. **핵심 단어 추출 (Highlights)**: 각 레벨 본문에 실제로 등장하는 단어 중 사용자가 어려워할 만한 경제/시사/사회 제도/전문 용어 4~6개를 레벨별로 따로 추출해. 사전적 정의가 아닌, 그 레벨 본문 [맥락]에 맞춘 아주 쉬운 풀이(툴팁용)를 제공해줘. "안정적인", "필요한", "어려운", "주거 환경", "교육 기회"처럼 평범한 형용사·생활 표현은 절대 하이라이트하지 마.
+        7. **원문 사실 보존**: 원문에 직접 나오지 않은 원인, 평가, 전망, 수치, 시장 반응, 산업 해석을 새로 만들지 마. 모든 문장은 [기사 본문]에 근거해야 한다.
+        8. **AI 사견 금지**: "해석됩니다", "분석됩니다", "관측됩니다", "지배적입니다", "힘을 얻고 있습니다", "논쟁을 불러일으켰습니다" 같은 해설형 표현은 원문에 같은 취지의 근거가 있을 때만 써라. 근거가 없으면 단정하거나 추론하지 마.
+        9. **홍보성 문장 금지**: "나눔의 의미를 다졌다", "의지를 보였다", "사회적 책임을 다하기 위해", "세상을 아름답게"처럼 원문보다 좋게 포장하는 표현은 원문 인용이 아니면 쓰지 마.
+        10. **문자 품질**: 깨진 문자, 대체 문자(�), 의미 없는 기호를 절대 포함하지 마.
+        11. **레벨별 하이라이트 난이도**: level_1~2는 쉬운 핵심어도 허용하지만, level_3~4에서는 '안정적인', '주거 환경', '경기', '협업'처럼 배경지식 없이 알 수 있는 일반어를 피하고 '해상풍력', '협약식', '카스트 제도', '달리트', '재정 건전성', '창조적 파괴', '산학협력', '시장 지배적 기업'처럼 본문 이해에 필요한 제도·산업·시사 용어를 우선 추출해.
 
         [📊 레벨별 가이드]
-        - level_1 (입문): 5~6문장. 초등학생이 핵심 사건과 결과를 이해할 수 있게 쉬운 단어로 설명해.
-        - level_2 (초급): 6~8문장. 사건의 배경, 이유, 결과를 빠뜨리지 말고 순서대로 설명해.
-        - level_3 (중급): 8~10문장. 핵심 주장과 근거, 맥락을 균형 있게 담아라. 기사체 문장을 유지하되 추상적 한자어 나열은 피하고 풀어서 설명해.
-        - level_4 (전문): 10~12문장. 원문의 핵심 논지와 근거, 의미를 충분히 전달하는 '심화 재구성본'으로 써라. '확인되었다' 같은 단정 대신 '분석된다', '해석된다'를 사용하고, 원문 표현을 복사하지 말고 너의 문장으로 새로 써.
+        - level_1 (입문): 4~5문장. 한 문장은 짧게 쓰고, 어려운 개념은 한 번에 하나만 소개해. 핵심은 "누가 무엇을 했는지", "누구에게 도움이 되는지", "무엇이 좋아지는지"만 남겨라. 감정 표현은 1문장 이내로 제한하고, 설명이 길어지면 과감히 줄여라.
+        - level_2 (초급): 6~7문장. level_1보다 배경과 이유를 조금 더 설명해. 어려운 용어를 쓰면 바로 쉬운 풀이를 붙여라. 예: "카스트 제도는 사람을 태어난 집안에 따라 나누는 제도다." 단체명, 금액, 사용처는 원문에 있으면 포함해도 된다.
+        - level_3 (중급): 8~10문장. level_2와 차이가 분명해야 한다. 기사체 흐름으로 "시점/주체/행동/금액 또는 규모/지원 대상/사용처/관련 발언 또는 배경"을 순서대로 정리해라. 날짜, 기관명, 인물명, 구체 수치는 원문에 있으면 유지하되, 원문에 없는 평가나 감상으로 문단을 마무리하지 마.
+        - level_4 (전문): 10~12문장. 원문의 핵심 사실, 배경, 이해관계, 수치, 원문에 제시된 전망을 가장 많이 보존하는 '원문 충실형 심화 재작성'으로 써라. 더 똑똑한 해설을 덧붙이는 단계가 아니라, 원문을 훼손하지 않으면서 문장 구조와 어려운 표현을 읽기 좋게 정리하는 단계다. 전문 용어, 직함, 기관명, 사업명은 원문에 있으면 유지하되, 원문에 없는 새로운 인과관계, 기업 의도, 산업 전망, 홍보성 평가를 추가하지 마.
         - 모든 레벨은 "핵심 사건/주장 → 왜 그런지 → 어떤 영향이 있는지 → 무엇을 기억하면 되는지" 흐름이 보이게 작성해.
         - 특히 칼럼/사설/기고문은 원문의 문제의식, 근거 사례, 결론 또는 제언이 빠지지 않게 작성해. 단순 주장 한 줄 요약으로 끝내면 안 된다.
         - 칼럼/사설/기고문일 때는 level_1도 단순 감상문처럼 쓰지 말고, 아래 3요소를 반드시 포함해:
@@ -147,7 +186,12 @@ class NewsAnalyzer:
                     response_mime_type="application/json",
                 )
             )
-            return json.loads(response.text)
+            result = json.loads(response.text)
+            if contains_invalid_replacement_char(result):
+                raise InvalidAIOutputError("AI 응답에 깨진 문자(�)가 포함되어 있습니다.")
+            if contains_disallowed_editorial_phrase(result):
+                raise InvalidAIOutputError("AI 응답에 홍보성 또는 추론성 표현이 포함되어 있습니다.")
+            return result
             
         except Exception as e:
             if is_retryable_error(e):

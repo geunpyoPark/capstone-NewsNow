@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,23 +8,32 @@ import {
   FlatList,
   ActivityIndicator,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import { colors } from '../theme';
 import { CAT_FILTERS, NewsItem } from '../data/news';
 import { useAppContext } from '../context/AppContext';
 import NewsCard from '../components/NewsCard';
 import CategoryPill from '../components/CategoryPill';
 import { formatNewsDate } from '../utils/date';
-import { API_BASE_URL } from '../config/api';
+import {
+  fetchNewsList,
+  fetchOverallLevel,
+  getCachedNewsList,
+  getCachedOverallLevel,
+} from '../utils/newsApi';
 
 type Props = {
   navigation: any;
 };
 
-function toLevelStyle(label: string) {
-  if (label === 'Lv1') return '하';
-  if (label === 'Lv2') return '중';
+function toDisplayLevel(level: number) {
+  if (level <= 1) return '하';
+  if (level === 2) return '중';
   return '상';
+}
+
+function toLevelLabel(level: number) {
+  const normalized = Math.min(4, Math.max(1, Math.round(level || 1)));
+  return `Lv${normalized}`;
 }
 
 export default function NewsListScreen({ navigation }: Props) {
@@ -35,18 +44,13 @@ export default function NewsListScreen({ navigation }: Props) {
 
   const loadNews = useCallback(async () => {
     try {
-      setLoading(true);
-
-      let levelNum = 2;
-      if (userEmail) {
-        const levelRes = await fetch(`${API_BASE_URL}/quiz/level/${userEmail}`);
-        const levelData = await levelRes.json();
-        levelNum = levelData.overall_level ?? 2;
+      const levelNum = getCachedOverallLevel(userEmail) ?? await fetchOverallLevel(userEmail);
+      const cachedNews = getCachedNewsList(levelNum);
+      if (!cachedNews) {
+        setLoading(true);
       }
 
-      const cat = filter === '전체' ? '' : `&category=${encodeURIComponent(filter)}`;
-      const res = await fetch(`${API_BASE_URL}/news/?level=${levelNum}${cat}`);
-      const data = await res.json();
+      const data = cachedNews ?? await fetchNewsList(levelNum);
 
       const mapped: NewsItem[] = data.map((a: any) => {
         const catLevel = getCategoryNumericLevel(a.category);
@@ -58,7 +62,7 @@ export default function NewsListScreen({ navigation }: Props) {
           body: [],
           views: a.view_count ?? 0,
           time: formatNewsDate(a.pub_date, 'compact'),
-          level: catLevel === 1 ? 'Lv1' : catLevel === 2 ? 'Lv2' : catLevel === 3 ? 'Lv3' : 'Lv4',
+          level: toDisplayLevel(catLevel),
           color: '',
         };
       });
@@ -69,13 +73,11 @@ export default function NewsListScreen({ navigation }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [filter, getCategoryNumericLevel, userEmail]);
+  }, [getCategoryNumericLevel, userEmail]);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadNews();
-    }, [loadNews])
-  );
+  useEffect(() => {
+    loadNews();
+  }, [loadNews]);
 
   const filtered = useMemo(() => {
     if (filter === '전체') return newsList;
@@ -121,13 +123,14 @@ export default function NewsListScreen({ navigation }: Props) {
         renderItem={({ item }) => (
           <NewsCard
             item={item}
+            levelLabel={toLevelLabel(getCategoryNumericLevel(item.cat))}
             read={readIds.includes(item.id)}
             scrapped={isScrapped(item.id)}
             onPress={() =>
               navigation.navigate('NewsDetail', {
                 newsId: item.id,
-                levelStyle: toLevelStyle(item.level as string),
-                levelLabel: item.level,
+                levelStyle: item.level,
+                levelLabel: toLevelLabel(getCategoryNumericLevel(item.cat)),
               })
             }
             onScrapPress={() => toggleScrap(item.id, item)}
