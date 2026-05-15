@@ -15,13 +15,17 @@ import {
   Image,
   ImageSourcePropType,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import { colors, categoryColor, Level } from '../theme';
 import { NewsItem } from '../data/news';
 import { useAppContext, FontScale } from '../context/AppContext';
 import LevelBadge from '../components/LevelBadge';
 import { formatNewsDate } from '../utils/date';
-import { API_BASE_URL } from '../config/api';
+import {
+  fetchNewsList,
+  fetchOverallLevel,
+  getCachedNewsList,
+  getCachedOverallLevel,
+} from '../utils/newsApi';
 
 type Props = {
   navigation: any;
@@ -63,7 +67,7 @@ export default function HomeScreen({ navigation }: Props) {
     userEmail,
     userName,
     selectedCategories,
-    readIds,
+    getTodayReadCount,
     getCurrentWeekReadDays,
     getCategoryNumericLevel,
     fontScale,
@@ -100,19 +104,13 @@ export default function HomeScreen({ navigation }: Props) {
 
   const loadNews = useCallback(async () => {
     try {
-      setLoading(true);
-
-      let levelNum = 2;
-      if (userEmail) {
-        try {
-          const levelRes = await fetch(`${API_BASE_URL}/quiz/level/${userEmail}`);
-          const levelData = await levelRes.json();
-          levelNum = levelData.overall_level ?? 2;
-        } catch {}
+      const levelNum = getCachedOverallLevel(userEmail) ?? await fetchOverallLevel(userEmail);
+      const cachedNews = getCachedNewsList(levelNum);
+      if (!cachedNews) {
+        setLoading(true);
       }
 
-      const res = await fetch(`${API_BASE_URL}/news/?level=${levelNum}`);
-      const data = await res.json();
+      const data = cachedNews ?? await fetchNewsList(levelNum);
 
       const mapped: NewsItem[] = (data as any[]).map(a => {
         const catLevel = getCategoryNumericLevel(a.category);
@@ -137,11 +135,9 @@ export default function HomeScreen({ navigation }: Props) {
     }
   }, [getCategoryNumericLevel, userEmail]);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadNews();
-    }, [loadNews]),
-  );
+  useEffect(() => {
+    loadNews();
+  }, [loadNews]);
 
   // 추천 뉴스: 관심 카테고리 기준 최대 4개. 부족하면 전체에서 채움.
   const recommended = useMemo(() => {
@@ -195,6 +191,7 @@ export default function HomeScreen({ navigation }: Props) {
   // 예) 월요일에 3개 읽어도 월 한 칸만 켜지고, 월+화 둘 다 읽어야 월화 두 칸이 켜짐.
   // 주(週)가 바뀌면 자동으로 전부 꺼진 상태로 표시됨.
   const weekRead = getCurrentWeekReadDays();
+  const todayReadCount = getTodayReadCount();
   const weekLabels = ['월', '화', '수', '목', '금', '토', '일'];
   const streakCount = weekRead.filter(Boolean).length;
   const streakText = streakCount > 0
@@ -219,7 +216,7 @@ export default function HomeScreen({ navigation }: Props) {
     <SafeAreaView style={styles.container}>
       {/* Top header */}
       <View style={styles.topBar}>
-        <Text style={styles.topLogo}>뉴픽</Text>
+        <Text style={styles.topLogo}>NewsNow</Text>
         <View style={styles.topRight}>
           <TouchableOpacity
             style={styles.fontBtn}
@@ -260,7 +257,7 @@ export default function HomeScreen({ navigation }: Props) {
             <View>
               <Text style={styles.readCounterLabel}>오늘 읽은 뉴스</Text>
               <View style={styles.readCounterNumRow}>
-                <Text style={styles.readCounterNum}>{readIds.length}</Text>
+                <Text style={styles.readCounterNum}>{todayReadCount}</Text>
                 <Text style={styles.readCounterUnit}>개</Text>
               </View>
             </View>
@@ -452,7 +449,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.white,
   },
-  topLogo: { fontSize: 20, fontWeight: '900', color: colors.primary, letterSpacing: -0.5 },
+  topLogo: { fontSize: 20, fontWeight: '900', color: colors.primary, letterSpacing: 0 },
   topRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   fontBtn: {
     height: 32,
