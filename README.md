@@ -57,7 +57,7 @@ NewsNow는 사용자의 학습 수준에 맞춰 기사 내용을 4단계로 재�
 | Data | PostgreSQL, SQLAlchemy, asyncpg |
 | AI / Data | Gemini, BeautifulSoup4, Requests |
 | Image Storage | Cloudinary |
-| Environment | Docker Compose, Redis |
+| Environment | Docker Compose (PostgreSQL) |
 
 ## 프로젝트 구조
 
