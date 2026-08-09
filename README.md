@@ -71,9 +71,9 @@ NewsNow는 사용자의 학습 수준에 맞춰 기사 내용을 4단계로 재�
 
 | 역할 | 담당 |
 | --- | --- |
-| 팀장 · AI / Data Pipeline | 박근표 |
-| Backend / Frontend | 팀원 |
-| Backend / Data | 팀원 |
+| 팀장 · AI / Data Pipeline / Backend | 박근표 |
+| Backend / Frontend | 김해수 |
+| Backend / Data | 김유나 |
 
 ## License
 
