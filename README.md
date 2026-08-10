@@ -13,7 +13,33 @@
 - 주요 흐름: 관심 분야 선택 -> 진단 퀴즈 -> 난이도 설정 -> 맞춤 뉴스 읽기 -> 용어 확인·스크랩 -> 기사 퀴즈 풀이
 - 주요 기술: React Native, TypeScript, FastAPI, PostgreSQL, SQLAlchemy, Gemini, Diffusers, Cloudinary, Docker Compose
 
-## 2. 문제 정의
+## 2. 구현 화면
+
+### 전체 UI
+
+홈 화면, 레벨별 뉴스 목록, 네컷 뉴스, 마이페이지로 이어지는 주요 사용자 화면입니다.
+
+![NewsNow 전체 UI](docs/images/newsnow-overall-ui.png)
+
+### 시스템 설계 구조
+
+모바일 앱, FastAPI 서버, PostgreSQL, Cloudinary, Gemini 기반 AI 파이프라인의 데이터 흐름입니다.
+
+![NewsNow 시스템 설계 구조](docs/images/newsnow-system-architecture.png)
+
+### 레벨별 뉴스 재해석
+
+동일한 기사를 사용자 이해 수준에 맞춰 1~4단계 난이도로 재작성하고, 핵심 단어와 퀴즈를 함께 제공하는 화면입니다.
+
+![NewsNow 레벨별 뉴스 재해석](docs/images/newsnow-level-news.png)
+
+### 단어 및 뉴스 스크랩
+
+기사 속 하이라이트 단어를 확인하고, 관심 기사와 단어를 마이페이지에서 다시 볼 수 있는 학습 흐름입니다.
+
+![NewsNow 단어 및 뉴스 스크랩](docs/images/newsnow-scrap-learning.png)
+
+## 3. 문제 정의
 
 일반 뉴스는 전문 용어와 긴 문장이 많아 사용자가 핵심 내용을 이해하기 어렵습니다. 단순 요약만 제공하면 사용자의 읽기 수준 차이와 용어 학습 요구를 해결하기 어렵습니다.
 
@@ -25,7 +51,7 @@ NewsNow는 다음 문제를 해결하고자 했습니다.
 - AI가 생성한 결과의 형식과 품질이 일정하지 않을 수 있음
 - 생성된 네컷 뉴스 이미지를 배포 환경에서도 안정적으로 보여 줘야 함
 
-## 3. 주요 기능
+## 4. 주요 기능
 
 ### 사용자 기능
 
@@ -70,7 +96,7 @@ NewsNow는 다음 문제를 해결하고자 했습니다.
   - PostgreSQL에 뉴스, 사용자, 스크랩, 퀴즈 결과 저장
   - JSONB를 활용해 난이도별 AI 분석 결과 저장
 
-## 4. 기술 구성
+## 5. 기술 구성
 
 | 구분 | 사용 기술 | 사용 목적 |
 | --- | --- | --- |
@@ -81,7 +107,7 @@ NewsNow는 다음 문제를 해결하고자 했습니다.
 | 이미지 | Diffusers, Pillow, Cloudinary | 네컷 뉴스 이미지 생성 및 공개 URL 저장 |
 | 개발 환경 | Docker Compose, Redis, PostgreSQL | 로컬 데이터베이스와 캐시 서버 실행 |
 
-## 5. 트러블 슈팅
+## 6. 트러블 슈팅
 
 | 문제 | 발생 부분 | 해결 방법 |
 | --- | --- | --- |
@@ -91,7 +117,7 @@ NewsNow는 다음 문제를 해결하고자 했습니다.
 | AI 응답 품질과 호출 제한 대응 필요 | `AI/news_analyzer.py` | 깨진 문자, 누락 필드, 형식 오류를 검증하고 429·503 같은 호출 제한이나 검증 실패 시 최대 5회 재시도하도록 처리 |
 | AI 결과 형식이 일정하지 않음 | AI 분석 파이프라인 | 난이도별 기사, 퀴즈, 핵심 단어, 스토리보드의 필수 항목을 검증해 서버와 앱에서 사용할 수 있는 구조로 맞춤 |
 
-## 6. 설치 및 실행
+## 7. 설치 및 실행
 
 ### 사전 준비
 
@@ -154,7 +180,7 @@ Android Emulator에서는 [`frontend/NewsNowApp/src/config/api.ts`](frontend/New
 
 AI 파이프라인은 `google-genai`, `google-generativeai`, `tenacity`, `beautifulsoup4`, `torch`, `diffusers`, `Pillow` 등의 패키지를 사용합니다. 현재 AI 폴더에는 별도의 의존성 목록 파일이 없으므로, 재현성을 높이려면 `AI/requirements.txt`를 추가하는 작업이 필요합니다.
 
-## 7. 프로젝트 구조
+## 8. 프로젝트 구조
 
 ```text
 capstone-NewsNow/
@@ -183,7 +209,7 @@ capstone-NewsNow/
 └── README.md                   # 프로젝트 안내 문서
 ```
 
-## 8. 담당 역할
+## 9. 담당 역할
 
 **팀장 · AI / Data Pipeline**
 
@@ -193,6 +219,6 @@ capstone-NewsNow/
 - 생성 이미지를 Cloudinary에 업로드하고 공개 URL을 데이터베이스에 저장하는 흐름 구현
 - AI 파트와 FastAPI 백엔드가 제목·본문·분석 결과를 주고받을 수 있도록 API 연동 규격 문서화
 
-## 9. 보안 메모
+## 10. 보안 메모
 
 외부 서비스 키, DB 접속 정보, 소셜 로그인 키는 `.env`로 분리하고 저장소에는 `.env.example`만 남깁니다. 공개 포트폴리오에 올리기 전에는 실제 키가 커밋되지 않았는지 확인해야 합니다.
