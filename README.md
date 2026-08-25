@@ -96,7 +96,7 @@ NewsNow는 이 문제를 다음 방식으로 해결합니다.
 
 ### 사전 준비
 
-- Docker Desktop, Python 3, Node.js 22 이상, npm
+- Python 3, Node.js 22 이상, npm
 - Android Emulator 또는 iOS Simulator
 - Google·Kakao 로그인과 AI 기능을 사용할 경우 각 서비스의 발급 키
 
